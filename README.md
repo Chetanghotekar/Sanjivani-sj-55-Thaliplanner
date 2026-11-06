@@ -49,6 +49,8 @@ ThaliPlanner/
 ├── .env.example
 ├── .gitignore
 └── README.md
+
+
 This is a suggested structure. Adjust it to match the actual files created during development.
 Getting Started
 Prerequisites
@@ -75,7 +77,7 @@ Create a MySQL database for the project. Add your database connection settings t
 5. Run the application
 Once run.py and the Flask application are implemented, start the app with:
 python run.py
-Open the local address printed in the terminal (commonly http://127.0.0.1:5000/).
+Open the local address printed in the terminal 
 Future Enhancements
 - Interactive maps for destinations.
 - Filters for cuisine, state, and travel interests.
