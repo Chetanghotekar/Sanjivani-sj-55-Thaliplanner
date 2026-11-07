@@ -1,0 +1,297 @@
+[
+  {
+    "id": 1,
+    "dish_name": "Moong Dal",
+    "region_or_type": "Dal",
+    "servings": 4,
+    "ingredients": [
+      "moong dal",
+      "turmeric",
+      "salt",
+      "cumin",
+      "oil"
+    ],
+    "time_and_difficulty": "30 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Moong_Dal"
+  },
+  {
+    "id": 2,
+    "dish_name": "Langar Dal",
+    "region_or_type": "Dal",
+    "servings": 4,
+    "ingredients": [
+      "whole urad dal",
+      "chana dal",
+      "ginger",
+      "garlic",
+      "tomato",
+      "spices"
+    ],
+    "time_and_difficulty": "90 minutes, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Langar_Dal"
+  },
+  {
+    "id": 3,
+    "dish_name": "Khichdi",
+    "region_or_type": "Rice",
+    "servings": 4,
+    "ingredients": [
+      "rice",
+      "moong dal",
+      "turmeric",
+      "salt",
+      "ghee"
+    ],
+    "time_and_difficulty": "35 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Khichdi"
+  },
+  {
+    "id": 4,
+    "dish_name": "Sambar I",
+    "region_or_type": "South Indian",
+    "servings": 4,
+    "ingredients": [
+      "toor dal",
+      "tamarind",
+      "vegetables",
+      "sambar powder"
+    ],
+    "time_and_difficulty": "45 minutes, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Sambar"
+  },
+  {
+    "id": 5,
+    "dish_name": "Rasam",
+    "region_or_type": "South Indian",
+    "servings": 4,
+    "ingredients": [
+      "tomato",
+      "tamarind",
+      "pepper",
+      "cumin",
+      "curry leaves"
+    ],
+    "time_and_difficulty": "25 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Rasam"
+  },
+  {
+    "id": 6,
+    "dish_name": "Idli",
+    "region_or_type": "South Indian",
+    "servings": 4,
+    "ingredients": [
+      "idli rice",
+      "urad dal",
+      "fenugreek seeds",
+      "salt"
+    ],
+    "time_and_difficulty": "30 minutes plus fermentation, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Idli"
+  },
+  {
+    "id": 7,
+    "dish_name": "Dosa I",
+    "region_or_type": "South Indian",
+    "servings": 4,
+    "ingredients": [
+      "rice",
+      "urad dal",
+      "fenugreek seeds",
+      "salt",
+      "oil"
+    ],
+    "time_and_difficulty": "30 minutes plus fermentation, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Dosa"
+  },
+  {
+    "id": 8,
+    "dish_name": "Masala Dosa",
+    "region_or_type": "South Indian",
+    "servings": 4,
+    "ingredients": [
+      "dosa batter",
+      "potatoes",
+      "onion",
+      "mustard seeds",
+      "curry leaves"
+    ],
+    "time_and_difficulty": "40 minutes, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Masala_Dosa"
+  },
+  {
+    "id": 9,
+    "dish_name": "Medu Vada",
+    "region_or_type": "South Indian",
+    "servings": 4,
+    "ingredients": [
+      "urad dal",
+      "pepper",
+      "cumin",
+      "curry leaves",
+      "oil"
+    ],
+    "time_and_difficulty": "40 minutes, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Medu_Vada"
+  },
+  {
+    "id": 10,
+    "dish_name": "Potato Curry (Aloo Masala)",
+    "region_or_type": "Curry",
+    "servings": 4,
+    "ingredients": [
+      "potatoes",
+      "onion",
+      "mustard seeds",
+      "turmeric",
+      "curry leaves"
+    ],
+    "time_and_difficulty": "30 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Potato_Curry"
+  },
+  {
+    "id": 11,
+    "dish_name": "Cholley",
+    "region_or_type": "North Indian",
+    "servings": 4,
+    "ingredients": [
+      "chickpeas",
+      "onion",
+      "tomato",
+      "ginger",
+      "chole masala"
+    ],
+    "time_and_difficulty": "60 minutes, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Chole"
+  },
+  {
+    "id": 12,
+    "dish_name": "Matar Paneer",
+    "region_or_type": "North Indian",
+    "servings": 4,
+    "ingredients": [
+      "paneer",
+      "green peas",
+      "onion",
+      "tomato",
+      "spices"
+    ],
+    "time_and_difficulty": "35 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Matar_Paneer"
+  },
+  {
+    "id": 13,
+    "dish_name": "Paneer Butter Masala",
+    "region_or_type": "North Indian",
+    "servings": 4,
+    "ingredients": [
+      "paneer",
+      "tomato",
+      "butter",
+      "cream",
+      "spices"
+    ],
+    "time_and_difficulty": "40 minutes, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Paneer_Butter_Masala"
+  },
+  {
+    "id": 14,
+    "dish_name": "Indian Rice",
+    "region_or_type": "Rice",
+    "servings": 4,
+    "ingredients": [
+      "rice",
+      "water",
+      "salt"
+    ],
+    "time_and_difficulty": "25 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Indian_Rice"
+  },
+  {
+    "id": 15,
+    "dish_name": "Coconut Rice",
+    "region_or_type": "Rice",
+    "servings": 4,
+    "ingredients": [
+      "rice",
+      "coconut",
+      "mustard seeds",
+      "urad dal",
+      "curry leaves"
+    ],
+    "time_and_difficulty": "30 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Coconut_Rice"
+  },
+  {
+    "id": 16,
+    "dish_name": "Onion Chutney",
+    "region_or_type": "Chutney",
+    "servings": 4,
+    "ingredients": [
+      "onion",
+      "red chilli",
+      "tamarind",
+      "oil",
+      "salt"
+    ],
+    "time_and_difficulty": "20 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Onion_Chutney"
+  },
+  {
+    "id": 17,
+    "dish_name": "Coconut Chutney",
+    "region_or_type": "Chutney",
+    "servings": 4,
+    "ingredients": [
+      "coconut",
+      "green chilli",
+      "ginger",
+      "salt"
+    ],
+    "time_and_difficulty": "15 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Coconut_Chutney"
+  },
+  {
+    "id": 18,
+    "dish_name": "Mango Chutney",
+    "region_or_type": "Chutney",
+    "servings": 4,
+    "ingredients": [
+      "mango",
+      "sugar",
+      "vinegar",
+      "spices"
+    ],
+    "time_and_difficulty": "35 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Mango_Chutney"
+  },
+  {
+    "id": 19,
+    "dish_name": "Masala Chai I",
+    "region_or_type": "Beverage",
+    "servings": 2,
+    "ingredients": [
+      "tea",
+      "milk",
+      "water",
+      "ginger",
+      "cardamom"
+    ],
+    "time_and_difficulty": "10 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Masala_Chai"
+  },
+  {
+    "id": 20,
+    "dish_name": "Dhokla",
+    "region_or_type": "Gujarati",
+    "servings": 4,
+    "ingredients": [
+      "gram flour",
+      "yogurt",
+      "lemon juice",
+      "eno",
+      "mustard seeds"
+    ],
+    "time_and_difficulty": "35 minutes, medium",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Dhokla"
+  }
+]
