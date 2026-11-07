@@ -1,4 +1,4 @@
-.venv/
+.venv*/
 venv/
 __pycache__/
 *.py[cod]
@@ -7,3 +7,4 @@ __pycache__/
 .vscode/
 .DS_Store
 Thumbs.db
+data/questions.json
