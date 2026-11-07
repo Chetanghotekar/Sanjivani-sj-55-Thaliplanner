@@ -1,0 +1,13 @@
+{
+    "dish_name": "Moong Dal",
+    "region_or_type": "Indian",
+    "servings": "4",
+    "ingredients": [
+        "Moong dal",
+        "Turmeric",
+        "Salt",
+        "Oil"
+    ],
+    "time_and_difficulty": "30 minutes, Easy",
+    "source_url": "https://en.wikibooks.org/"
+}
