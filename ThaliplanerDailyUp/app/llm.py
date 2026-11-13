@@ -1,4 +1,4 @@
-"""Day 6: Small provider wrapper so the rest of the app never touches Groq/Gemini directly."""
+"""Day 6: Small provider wrapper so the rest of the app never touches Groq/Gemini directly. """
 import os
 import requests
 from dotenv import load_dotenv
