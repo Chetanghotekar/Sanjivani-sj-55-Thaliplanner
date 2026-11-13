@@ -1,13 +1,32 @@
-{
+[
+  {
+    "id": 1,
     "dish_name": "Moong Dal",
-    "region_or_type": "Indian",
-    "servings": "4",
+    "region_or_type": "Dal",
+    "servings": 4,
     "ingredients": [
-        "Moong dal",
-        "Turmeric",
-        "Salt",
-        "Oil"
+      "moong dal",
+      "turmeric",
+      "salt",
+      "cumin",
+      "oil"
     ],
-    "time_and_difficulty": "30 minutes, Easy",
-    "source_url": "https://en.wikibooks.org/"
-}
+    "time_and_difficulty": "30 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Moong_Dal"
+  },
+  {
+    "id": 2,
+    "dish_name": "Khichdi",
+    "region_or_type": "Rice",
+    "servings": 4,
+    "ingredients": [
+      "rice",
+      "moong dal",
+      "turmeric",
+      "salt",
+      "ghee"
+    ],
+    "time_and_difficulty": "35 minutes, easy",
+    "source_url": "https://en.wikibooks.org/wiki/Cookbook:Khichdi"
+  }
+]
