@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 from app.records import load_records, get_by_id
 from app.smart_search import smart_search
+from app.vectorstore import search_chunks
 from app.llm import ask_llm, LLMError
 from app.prompt_loader import build_system_prompt
 
@@ -125,3 +126,17 @@ def chat(request: ChatRequest):
         return run_chat(request.question, request.task, request.prompt_version)
     except LLMError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+
+@app.get("/search/semantic")
+def semantic_search_records(q: str, limit: int = 5):
+    """Semantic search over persistent ChromaDB document chunks."""
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Search query cannot be empty")
+    if limit < 1 or limit > 50:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 50")
+    try:
+        results = search_chunks(q, top_k=limit)
+        return {"query": q, "count": len(results), "results": results}
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
