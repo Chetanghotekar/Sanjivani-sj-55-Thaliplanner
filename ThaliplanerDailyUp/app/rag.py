@@ -1,4 +1,4 @@
-"""Retrieval-augmented answers for ThaliPlanner with source citations."""
+"""Retrieval-augmented answers for ThaliPlanner with source citations"""
 from __future__ import annotations
 
 import re
