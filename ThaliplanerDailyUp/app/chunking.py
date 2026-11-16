@@ -68,8 +68,9 @@ def _metadata(source: str, page: int, title: str, chunk_index: int) -> dict[str,
 
 
 def _chunks_for_text(text: str, source: str, title: str,
-                     page: int = 1) -> list[dict[str, Any]]:
-    pieces = split_text(_clean_text(text))
+                     page: int = 1, chunk_size: int = CHUNK_SIZE,
+                     overlap: int = CHUNK_OVERLAP) -> list[dict[str, Any]]:
+    pieces = split_text(_clean_text(text), chunk_size=chunk_size, overlap=overlap)
     output = []
     for index, piece in enumerate(pieces):
         output.append({
@@ -79,7 +80,8 @@ def _chunks_for_text(text: str, source: str, title: str,
     return output
 
 
-def _record_chunks() -> list[dict[str, Any]]:
+def _record_chunks(chunk_size: int = CHUNK_SIZE,
+                   overlap: int = CHUNK_OVERLAP) -> list[dict[str, Any]]:
     if not DATA_FILE.exists():
         return []
 
@@ -108,7 +110,8 @@ def _record_chunks() -> list[dict[str, Any]]:
             f"Time and difficulty: {record.get('time_and_difficulty', 'Not specified')}."
         )
         source = str(record.get("source_url") or "data/records.json")
-        output.extend(_chunks_for_text(text, source, title, page=1))
+        output.extend(_chunks_for_text(text, source, title, page=1,
+                                       chunk_size=chunk_size, overlap=overlap))
     return output
 
 
@@ -141,13 +144,14 @@ def _read_document(path: Path) -> tuple[str, str]:
     return raw, title
 
 
-def chunk_documents() -> list[dict[str, Any]]:
+def chunk_documents(chunk_size: int = CHUNK_SIZE,
+                    overlap: int = CHUNK_OVERLAP) -> list[dict[str, Any]]:
     """Chunk records.json plus project docs/Prompt/README/raw HTML.
 
     Each result has `text` and metadata containing `source`, `page`, `title`.
     Evaluation outputs and the Chroma database are intentionally excluded.
     """
-    chunks = _record_chunks()
+    chunks = _record_chunks(chunk_size=chunk_size, overlap=overlap)
 
     candidate_dirs = [ROOT / "docs", ROOT / "Prompt", ROOT / "data" / "raw"]
     candidate_files = [ROOT / "README.md"]
@@ -176,7 +180,8 @@ def chunk_documents() -> list[dict[str, Any]]:
             continue
 
         text, title = _read_document(path)
-        chunks.extend(_chunks_for_text(text, source, title, page=1))
+        chunks.extend(_chunks_for_text(text, source, title, page=1,
+                                       chunk_size=chunk_size, overlap=overlap))
 
     return chunks
 
