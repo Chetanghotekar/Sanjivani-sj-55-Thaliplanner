@@ -9,10 +9,16 @@ from app.smart_search import smart_search
 from app.vectorstore import search_chunks
 from app.llm import ask_llm, LLMError
 from app.prompt_loader import build_system_prompt
+from app.rag import answer_question
 
 app = FastAPI(title="ThaliPlanner API", version="2.0.0")
 ROOT = Path(__file__).resolve().parents[1]
 QUESTIONS_FILE = ROOT / "data" / "questions.json"
+
+
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    top_k: int = Field(default=5, ge=1, le=20)
 
 
 class QuestionRequest(BaseModel):
@@ -140,3 +146,14 @@ def semantic_search_records(q: str, limit: int = 5):
     except (RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
+
+
+@app.post("/ask")
+def ask(request: AskRequest):
+    """Answer from retrieved ThaliPlanner chunks and return source citations."""
+    if not request.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+    try:
+        return answer_question(request.question, top_k=request.top_k)
+    except (RuntimeError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
