@@ -55,3 +55,43 @@ git commit -m "Complete ThaliPlanner Days 1-4"
 git push origin main
 ```
 Do not commit `.venv/`. Empty folders are not tracked by Git.
+
+## S1: Retrieval-augmented question answering
+
+The `POST /ask` endpoint retrieves relevant document chunks and returns an extractive answer with numbered citations. Every citation includes the source, title, page, and similarity score. Questions asking for nutrition facts (including Q6 about Masala Dosa calories) return **I don't know** because the recipe dataset has no nutrition fields.
+
+Run the API:
+
+```powershell
+python -m uvicorn app.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs`, select `POST /ask`, and try:
+
+```json
+{"question": "Which dishes can I make with moong dal?", "top_k": 5}
+```
+
+Q6 abstention check:
+
+```json
+{"question": "How many calories are in a Masala Dosa?", "top_k": 5}
+```
+
+Expected answer begins with `I don't know.`
+
+## S2: 15-question retrieval evaluation
+
+The evaluation dataset is `eval/eval_set.json` (15 rows). Run both retrieval configurations and automatically write the measured comparison and winner into this README:
+
+```powershell
+python -m eval.run_eval
+```
+
+Detailed per-question results are saved to `eval/eval_results.md`. The script compares chunk size/overlap and top-k, checks the expected evidence terms, and treats Q6 as correct only when the RAG system abstains. The winner below is filled in by the evaluation run; do not manually guess the winning configuration.
+
+<!-- RETRIEVAL_EVAL_START -->
+## Retrieval configuration experiment
+
+Run `python -m eval.run_eval` to populate the measured winner table here.
+<!-- RETRIEVAL_EVAL_END -->
