@@ -1,0 +1,15 @@
+requests
+beautifulsoup4
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+python-dotenv
+sentence-transformers
+chromadb
+langgraph
+
+# for tests
+pytest
+httpx
