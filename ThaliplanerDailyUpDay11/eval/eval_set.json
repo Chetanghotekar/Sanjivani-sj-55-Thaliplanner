@@ -1,0 +1,17 @@
+[
+  {"id": 1, "question": "Which dishes can I make with moong dal?", "expected_terms": ["Moong Dal", "Khichdi"], "should_abstain": false},
+  {"id": 2, "question": "What South Indian dishes do you have?", "expected_terms": ["Sambar I", "Rasam", "Idli", "Dosa I", "Masala Dosa", "Medu Vada"], "should_abstain": false},
+  {"id": 3, "question": "How long does Dhokla take and how hard is it?", "expected_terms": ["Dhokla", "35 minutes", "medium"], "should_abstain": false},
+  {"id": 4, "question": "What ingredients do I need for Paneer Butter Masala?", "expected_terms": ["paneer", "tomato", "butter", "cream"], "should_abstain": false},
+  {"id": 5, "question": "Which recipes are easy and take 20 minutes or less?", "expected_terms": ["Onion Chutney", "Coconut Chutney", "Masala Chai I"], "should_abstain": false},
+  {"id": 6, "question": "How many calories are in a Masala Dosa?", "expected_terms": [], "should_abstain": true},
+  {"id": 7, "question": "I have potatoes and onions, what can I cook?", "expected_terms": ["Potato Curry", "Masala Dosa", "potatoes", "onion"], "should_abstain": false},
+  {"id": 8, "question": "Can you suggest a simple thali using your recipes?", "expected_terms": ["Moong Dal", "Potato Curry", "Indian Rice", "Coconut Chutney"], "should_abstain": false},
+  {"id": 9, "question": "Which Gujarati dish can I make for a snack?", "expected_terms": ["Dhokla", "Gujarati"], "should_abstain": false},
+  {"id": 10, "question": "Where can I find the source for the Idli recipe?", "expected_terms": ["Idli", "Cookbook:Idli"], "should_abstain": false},
+  {"id": 11, "question": "Which recipes use coconut?", "expected_terms": ["Coconut Rice", "Coconut Chutney"], "should_abstain": false},
+  {"id": 12, "question": "Suggest a quick drink from the recipe collection.", "expected_terms": ["Masala Chai I", "10 minutes"], "should_abstain": false},
+  {"id": 13, "question": "Which recipes contain paneer?", "expected_terms": ["Matar Paneer", "Paneer Butter Masala"], "should_abstain": false},
+  {"id": 14, "question": "What is the serving count for Moong Dal?", "expected_terms": ["Moong Dal", "Servings: 4"], "should_abstain": false},
+  {"id": 15, "question": "Which chutneys are available?", "expected_terms": ["Onion Chutney", "Coconut Chutney", "Mango Chutney"], "should_abstain": false}
+]

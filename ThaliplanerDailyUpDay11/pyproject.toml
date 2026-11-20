@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".venv",
+    "chroma_db",
+    "__pycache__",
+    ".pytest_cache",
+    ".git",
+    "Sanjivani-sj-55-Thaliplanner",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]

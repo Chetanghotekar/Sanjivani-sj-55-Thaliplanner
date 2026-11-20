@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+.venv*/
+venv/
+.env
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+.pytest_cache/
+
+# Generated / local data
+chroma_db/
+data/questions.json
+token.txt
