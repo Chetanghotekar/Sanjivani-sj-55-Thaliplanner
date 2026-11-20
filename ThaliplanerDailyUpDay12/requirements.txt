@@ -1,0 +1,33 @@
+requests
+beautifulsoup4
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+python-dotenv
+sentence-transformers
+chromadb
+langgraph
+langgraph-checkpoint
+streamlit
+
+# for tests
+pytest
+httpx
+
+beautifulsoup4
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+python-dotenv
+sentence-transformers
+chromadb
+langgraph
+streamlit
+
+# for tests
+pytest
+httpx

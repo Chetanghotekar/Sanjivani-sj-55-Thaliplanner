@@ -1,0 +1,29 @@
+# Docker Compose for ThaliPlanner
+# -------------------------------------------------
+# This file starts both the FastAPI backend and the Streamlit UI.
+# It expects the Dockerfile in the project root.
+
+version: "3.9"
+
+services:
+  api:
+    build: .
+    container_name: thaliplanner_api
+    command: "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  ui:
+    build: .
+    container_name: thaliplanner_ui
+    command: "streamlit run ui/app.py --server.headless true --server.port 8501"
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

@@ -1,0 +1,25 @@
+{
+  "_note": "Starter quantities for each recipe in data/records.json, written for that recipe's own 'servings' value (4, or 2 for Masala Chai I). The recipe records only list ingredient NAMES, so these amounts are approximate home-cooking estimates added for the grocery-list tool. Check them against each recipe's source_url and edit freely. Each entry is [ingredient, quantity, unit]. Units: cup, tbsp, tsp, g, kg, ml, l, piece.",
+  "recipes": {
+    "1":  [["moong dal", 1, "cup"], ["turmeric", 0.5, "tsp"], ["salt", 1, "tsp"], ["cumin", 1, "tsp"], ["oil", 1, "tbsp"]],
+    "2":  [["whole urad dal", 0.75, "cup"], ["chana dal", 0.25, "cup"], ["ginger", 15, "g"], ["garlic", 10, "g"], ["tomato", 2, "piece"], ["spices", 2, "tsp"]],
+    "3":  [["rice", 1, "cup"], ["moong dal", 0.5, "cup"], ["turmeric", 0.5, "tsp"], ["salt", 1, "tsp"], ["ghee", 1, "tbsp"]],
+    "4":  [["toor dal", 0.5, "cup"], ["tamarind", 1, "tbsp"], ["vegetables", 250, "g"], ["sambar powder", 2, "tsp"]],
+    "5":  [["tomato", 2, "piece"], ["tamarind", 1, "tbsp"], ["pepper", 1, "tsp"], ["cumin", 1, "tsp"], ["curry leaves", 5, "g"]],
+    "6":  [["idli rice", 1.5, "cup"], ["urad dal", 0.5, "cup"], ["fenugreek seeds", 0.5, "tsp"], ["salt", 1, "tsp"]],
+    "7":  [["rice", 1.5, "cup"], ["urad dal", 0.5, "cup"], ["fenugreek seeds", 0.5, "tsp"], ["salt", 1, "tsp"], ["oil", 2, "tbsp"]],
+    "8":  [["dosa batter", 3, "cup"], ["potatoes", 3, "piece"], ["onion", 1, "piece"], ["mustard seeds", 1, "tsp"], ["curry leaves", 5, "g"]],
+    "9":  [["urad dal", 1, "cup"], ["pepper", 1, "tsp"], ["cumin", 1, "tsp"], ["curry leaves", 5, "g"], ["oil", 1, "cup"]],
+    "10": [["potatoes", 4, "piece"], ["onion", 1, "piece"], ["mustard seeds", 1, "tsp"], ["turmeric", 0.5, "tsp"], ["curry leaves", 5, "g"]],
+    "11": [["chickpeas", 1.5, "cup"], ["onion", 2, "piece"], ["tomato", 2, "piece"], ["ginger", 15, "g"], ["chole masala", 2, "tsp"]],
+    "12": [["paneer", 200, "g"], ["green peas", 1, "cup"], ["onion", 1, "piece"], ["tomato", 2, "piece"], ["spices", 2, "tsp"]],
+    "13": [["paneer", 250, "g"], ["tomato", 3, "piece"], ["butter", 2, "tbsp"], ["cream", 0.25, "cup"], ["spices", 2, "tsp"]],
+    "14": [["rice", 1.5, "cup"], ["water", 3, "cup"], ["salt", 1, "tsp"]],
+    "15": [["rice", 1.5, "cup"], ["coconut", 0.5, "cup"], ["mustard seeds", 1, "tsp"], ["urad dal", 1, "tbsp"], ["curry leaves", 5, "g"]],
+    "16": [["onion", 2, "piece"], ["red chilli", 4, "piece"], ["tamarind", 1, "tbsp"], ["oil", 1, "tbsp"], ["salt", 0.5, "tsp"]],
+    "17": [["coconut", 1, "cup"], ["green chilli", 2, "piece"], ["ginger", 10, "g"], ["salt", 0.5, "tsp"]],
+    "18": [["mango", 2, "piece"], ["sugar", 0.5, "cup"], ["vinegar", 0.25, "cup"], ["spices", 1, "tsp"]],
+    "19": [["tea", 2, "tsp"], ["milk", 1, "cup"], ["water", 1, "cup"], ["ginger", 5, "g"], ["cardamom", 2, "piece"]],
+    "20": [["gram flour", 1.5, "cup"], ["yogurt", 0.5, "cup"], ["lemon juice", 1, "tbsp"], ["eno", 1, "tsp"], ["mustard seeds", 1, "tsp"]]
+  }
+}
