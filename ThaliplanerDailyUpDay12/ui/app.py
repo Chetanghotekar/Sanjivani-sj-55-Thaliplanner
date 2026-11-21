@@ -1,11 +1,15 @@
 """
 ThaliPlanner — Interactive Unified Dashboard UI
 ===================================================
-Matches the modern dashboard design:
-- Left Column: Chat Assistant (/ask & /agent with citations, thumbs up/down feedback)
-- Right Column:
-  - Top Card: 7-Day Weekly Thali Planner (Breakfast / Lunch / Dinner) with Dal repeat warning
-  - Bottom Card: Scaled Grocery List (built via app.tools.build_grocery_list scaled to Family Size)
+Features:
+- Sidebar Navigation:
+  * 💬 Chat Assistant (Unified Dashboard with Chat + 7-Day Planner + Grocery List)
+  * 📅 Meal Planner (Focused full 7-day thali planner with chips, dal repeat warning, metrics)
+  * 🛒 Grocery List (Focused scaled shopping list with categories, checkboxes, download)
+  * ℹ️ About (Project documentation, 20 recipe catalogue, persona, architecture)
+- Connects to FastAPI backend (/ask, /agent) with graceful local fallbacks.
+- Saves helpful / not-helpful feedback to ui/feedback.jsonl.
+- Scaled grocery calculation powered by app.tools.build_grocery_list.
 """
 from __future__ import annotations
 
@@ -40,12 +44,10 @@ API_BASE = "http://localhost:8000"
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 MEALS = ["Breakfast", "Lunch", "Dinner"]
 
-# Paneer dish IDs in data/records.json
 PANEER_IDS = {12, 13}  # Matar Paneer, Paneer Butter Masala
 NON_VEGAN = {"ghee", "butter", "cream", "milk", "curd", "paneer", "yogurt", "khoya"}
 DAL_TYPE = "Dal"
 
-# Recipe display icons
 DISH_ICONS = {
     "Moong Dal": "🍲",
     "Langar Dal": "🍲",
@@ -70,12 +72,12 @@ DISH_ICONS = {
 }
 
 
-# ── Classification & Chips ──────────────────────────────────────────────────
+# ── Helpers ─────────────────────────────────────────────────────────────────
 def classify(record: dict) -> tuple[bool, bool, bool]:
     rid = record.get("id", 0)
     ingr = [str(i).lower() for i in record.get("ingredients", [])]
     has_paneer = rid in PANEER_IDS or any("paneer" in i for i in ingr)
-    is_veg = True  # all records are vegetarian
+    is_veg = True
     is_vegan = not any(nv in " ".join(ingr) for nv in NON_VEGAN)
     return is_veg, is_vegan, has_paneer
 
@@ -92,7 +94,6 @@ def get_chips_html(record: dict) -> str:
     return " ".join(chips)
 
 
-# ── Direct RAG / Agent Fallback ─────────────────────────────────────────────
 @st.cache_resource
 def get_rag_function():
     try:
@@ -103,7 +104,6 @@ def get_rag_function():
 
 
 def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int = 4) -> dict:
-    """Query FastAPI backend or fallback to in-memory RAG/agent tools."""
     endpoint = f"{API_BASE}/agent" if use_agent else f"{API_BASE}/ask"
     payload_data = {"message": question} if use_agent else {"question": question}
     try:
@@ -116,9 +116,8 @@ def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int 
         with urllib.request.urlopen(req, timeout=5) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except Exception:
-        pass  # Server not reachable, use local direct logic
+        pass
 
-    # Direct agent or RAG execution
     if use_agent:
         try:
             from app.agent_loop import run_agent
@@ -139,26 +138,25 @@ def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int 
         except Exception as exc:
             return {"answer": f"⚠️ RAG error: {exc}", "citations": [], "abstained": True}
 
-    # High quality structured default reply for demo questions
     q_lower = question.lower()
     if "plan" in q_lower or "lunch" in q_lower or "dal" in q_lower:
         return {
             "answer": (
-                "**Here is your 3-day lunch plan:**\n\n"
-                "- ✅ **Monday:** Moong Dal\n"
-                "- ✅ **Tuesday:** Langar Dal\n"
-                "- ✅ **Wednesday:** Sambar I\n\n"
+                "Here is your 3-day lunch plan:\n\n"
+                "✅ **Monday:** Moong Dal\n\n"
+                "✅ **Tuesday:** Langar Dal\n\n"
+                "✅ **Wednesday:** Sambar I\n\n"
                 "Would you like to add these to your weekly planner?"
             ),
-            "citations": [{"source": "Wikibooks - Indian Recipes", "chunk": "Indian Dal & Curry recipes collection"}],
+            "citations": [{"source": "Wikibooks – Indian Recipes", "chunk": "Indian Dal & Curry recipes"}],
             "abstained": False,
         }
 
     return {
         "answer": (
-            f"Based on our recipe catalogue, we recommend planning balanced vegetarian meals with whole grains, dals, and sabzis for {family_size} people."
+            f"Based on our 20 Indian recipes catalogue, we recommend planning balanced vegetarian meals for {family_size} people."
         ),
-        "citations": [{"source": "Wikibooks - Indian Recipes", "chunk": "Cuisine of India"}],
+        "citations": [{"source": "Wikibooks – Indian Recipes", "chunk": "Cuisine of India"}],
         "abstained": False,
     }
 
@@ -191,21 +189,13 @@ def dish_label(name: str) -> str:
     return f"{icon}  {name}"
 
 
-# Default initial planner grid matching screenshot
 DEFAULT_GRID = [
-    # Mon
     {"Breakfast": "Idli", "Lunch": "Moong Dal", "Dinner": "Indian Rice"},
-    # Tue
     {"Breakfast": "Dosa I", "Lunch": "Langar Dal", "Dinner": "Khichdi"},
-    # Wed
     {"Breakfast": "Dhokla", "Lunch": "Sambar I", "Dinner": "Coconut Rice"},
-    # Thu
     {"Breakfast": "Medu Vada", "Lunch": "Moong Dal", "Dinner": "Rasam"},
-    # Fri
     {"Breakfast": "Idli", "Lunch": "Cholley", "Dinner": "Indian Rice"},
-    # Sat
     {"Breakfast": "Dosa I", "Lunch": "Matar Paneer", "Dinner": "Khichdi"},
-    # Sun
     {"Breakfast": "Dhokla", "Lunch": "Sambar I", "Dinner": "Dosa I"},
 ]
 
@@ -244,15 +234,11 @@ if "messages" not in st.session_state:
 if "msg_counter" not in st.session_state:
     st.session_state.msg_counter = 1
 
-if "checked_grocery" not in st.session_state:
-    st.session_state.checked_grocery = {}
-
 
 # ── Custom CSS for Modern Purple Dashboard ──────────────────────────────────
 st.markdown(
     """
     <style>
-    /* Global styles */
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
     
     html, body, [class*="css"] {
@@ -263,12 +249,10 @@ st.markdown(
         background-color: #f4f5fc;
     }
     
-    /* Hide default header decor */
     header[data-testid="stHeader"] {
         background: transparent;
     }
     
-    /* Sidebar styling */
     section[data-testid="stSidebar"] {
         background-color: #fcfcff;
         border-right: 1px solid #e8eaf6;
@@ -280,16 +264,16 @@ st.markdown(
         align-items: center;
         gap: 12px;
         padding: 8px 12px;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
     
     .brand-icon {
-        font-size: 32px;
+        font-size: 30px;
         background: #ede9fe;
         color: #5d50c6;
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -309,52 +293,47 @@ st.markdown(
         letter-spacing: 0.5px;
     }
     
-    /* Nav items */
-    .nav-btn {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
+    /* Sleek radio button tabs */
+    div[data-testid="stRadio"] > div {
+        gap: 6px;
+    }
+    
+    div[data-testid="stRadio"] label {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #4b5563;
-        margin-bottom: 6px;
-        background: transparent;
-        border: none;
-        width: 100%;
-        text-align: left;
+        padding: 8px 14px !important;
+        margin-bottom: 2px;
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
     }
     
-    .nav-btn.active {
-        background: #5d50c6;
-        color: #ffffff;
-        box-shadow: 0 4px 12px rgba(93, 80, 198, 0.25);
+    div[data-testid="stRadio"] label:hover {
+        background-color: #ede9fe;
+        border-color: #c4b5fd;
     }
     
-    /* Sidebar Promo Card */
+    div[data-testid="stRadio"] label:has(input:checked) {
+        background: #5d50c6 !important;
+        border-color: #5d50c6 !important;
+        box-shadow: 0 4px 10px rgba(93, 80, 198, 0.22);
+    }
+    
+    div[data-testid="stRadio"] label:has(input:checked) p,
+    div[data-testid="stRadio"] label:has(input:checked) span {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
+    
     .promo-card {
         background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%);
-        border-radius: 16px;
-        padding: 16px;
-        margin-top: 30px;
+        border-radius: 14px;
+        padding: 14px;
+        margin-top: 24px;
         text-align: center;
         border: 1px solid #dcd7fe;
     }
     
-    .promo-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #3730a3;
-        margin-bottom: 8px;
-    }
-    
-    .promo-img {
-        font-size: 38px;
-        margin: 6px 0;
-    }
-
-    /* Dashboard Cards */
     .card {
         background: #ffffff;
         border-radius: 16px;
@@ -362,13 +341,6 @@ st.markdown(
         box-shadow: 0 2px 10px rgba(79, 70, 229, 0.04);
         border: 1px solid #eef0f8;
         margin-bottom: 20px;
-    }
-    
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 14px;
     }
     
     .card-title {
@@ -380,7 +352,6 @@ st.markdown(
         gap: 8px;
     }
 
-    /* Chat bubble styling */
     .chat-container {
         display: flex;
         flex-direction: column;
@@ -451,7 +422,6 @@ st.markdown(
         text-decoration: none;
     }
 
-    /* Warning banner */
     .warning-banner {
         background: #fff8e6;
         color: #b45309;
@@ -477,12 +447,11 @@ st.markdown(
         margin-top: 10px;
     }
     
-    /* Chips */
     .chip {
         display: inline-block;
-        padding: 1px 7px;
+        padding: 2px 8px;
         border-radius: 10px;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 600;
         margin-right: 4px;
     }
@@ -490,7 +459,6 @@ st.markdown(
     .chip-veg { background: #ecfdf5; color: #047857; }
     .chip-paneer { background: #ffedd5; color: #9a3412; }
 
-    /* Total items pill */
     .total-pill {
         display: inline-flex;
         align-items: center;
@@ -502,11 +470,6 @@ st.markdown(
         font-size: 13px;
         font-weight: 700;
         margin-top: 12px;
-    }
-    
-    /* Compact inputs in table */
-    div[data-baseweb="select"] {
-        min-height: 34px !important;
     }
     </style>
     """,
@@ -531,7 +494,6 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # Navigation menu items matching screenshot
     nav_mode = st.radio(
         "Navigation",
         ["💬 Chat Assistant", "📅 Meal Planner", "🛒 Grocery List", "ℹ️ About"],
@@ -542,12 +504,11 @@ with st.sidebar:
     st.caption("⚙️ **Engine Settings**")
     agent_mode_toggle = st.toggle("🤖 Agent Mode (LangGraph)", value=True, help="Enables multi-step reasoning & grocery calling")
 
-    # Bottom promo card matching the screenshot
     st.markdown(
         """
         <div class="promo-card">
-            <div class="promo-img">🍛 🌿</div>
-            <div class="promo-title">Healthy Indian Meals Made Easy!</div>
+            <div style="font-size: 32px; margin-bottom: 6px;">🍛 🌿</div>
+            <div style="font-size: 13px; font-weight: 700; color: #3730a3; margin-bottom: 4px;">Healthy Indian Meals Made Easy!</div>
             <div style="font-size: 11px; color: #4338ca;">Smart vegetarian meal planning with nutrition-balanced thalis.</div>
         </div>
         """,
@@ -555,16 +516,199 @@ with st.sidebar:
     )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MAIN DASHBOARD LAYOUT (2 Columns matching Screenshot)
-# ══════════════════════════════════════════════════════════════════════════════
-col_chat, col_planner = st.columns([4, 6], gap="large")
+# ──────────────────────────────────────────────────────────────────────────────
+# Helper Components for Planner & Grocery Cards
+# ──────────────────────────────────────────────────────────────────────────────
+def render_planner_card(is_expanded: bool = False):
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    header_left, header_mid, header_right = st.columns([5, 2.5, 2.5])
+    with header_left:
+        st.markdown('<div class="card-title">📅 Weekly Thali Planner</div>', unsafe_allow_html=True)
+    with header_mid:
+        selected_family_size = st.selectbox(
+            "Family Size:",
+            options=[1, 2, 4, 6, 8],
+            index=[1, 2, 4, 6, 8].index(st.session_state.family_size),
+            key="family_size_select",
+        )
+        st.session_state.family_size = selected_family_size
+    with header_right:
+        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+        if st.button("💾 Save Plan", type="primary", use_container_width=True, key="save_plan_btn"):
+            st.toast(f"Plan saved for {st.session_state.family_size} people!", icon="💾")
+
+    # Table Header
+    th_day, th_bf, th_lunch, th_dinner = st.columns([2.0, 3.2, 3.2, 3.2])
+    th_day.markdown("**Day**")
+    th_bf.markdown("**Breakfast**")
+    th_lunch.markdown("**Lunch**")
+    th_dinner.markdown("**Dinner**")
+
+    dal_counter = collections.Counter()
+    chosen_recipe_ids = []
+
+    for di, day_name in enumerate(DAYS):
+        r_day, r_bf, r_lunch, r_dinner = st.columns([2.0, 3.2, 3.2, 3.2])
+        r_day.markdown(f"**{day_name}**")
+
+        # Breakfast
+        with r_bf:
+            curr_bf = st.session_state.planner_grid[di]["Breakfast"]
+            bf_idx = all_dish_names.index(curr_bf) if curr_bf in all_dish_names else 0
+            sel_bf = st.selectbox(
+                f"{day_name}_bf",
+                options=all_dish_names,
+                index=bf_idx,
+                format_func=dish_label,
+                key=f"sel_{di}_Breakfast",
+                label_visibility="collapsed",
+            )
+            st.session_state.planner_grid[di]["Breakfast"] = sel_bf
+            if sel_bf in name_to_id:
+                rid = name_to_id[sel_bf]
+                chosen_recipe_ids.append(rid)
+                if id_to_record[rid].get("region_or_type") == DAL_TYPE:
+                    dal_counter[sel_bf] += 1
+                if is_expanded:
+                    st.markdown(get_chips_html(id_to_record[rid]), unsafe_allow_html=True)
+
+        # Lunch
+        with r_lunch:
+            curr_l = st.session_state.planner_grid[di]["Lunch"]
+            l_idx = all_dish_names.index(curr_l) if curr_l in all_dish_names else 0
+            sel_l = st.selectbox(
+                f"{day_name}_lunch",
+                options=all_dish_names,
+                index=l_idx,
+                format_func=dish_label,
+                key=f"sel_{di}_Lunch",
+                label_visibility="collapsed",
+            )
+            st.session_state.planner_grid[di]["Lunch"] = sel_l
+            if sel_l in name_to_id:
+                rid = name_to_id[sel_l]
+                chosen_recipe_ids.append(rid)
+                if id_to_record[rid].get("region_or_type") == DAL_TYPE:
+                    dal_counter[sel_l] += 1
+                if is_expanded:
+                    st.markdown(get_chips_html(id_to_record[rid]), unsafe_allow_html=True)
+
+        # Dinner
+        with r_dinner:
+            curr_d = st.session_state.planner_grid[di]["Dinner"]
+            d_idx = all_dish_names.index(curr_d) if curr_d in all_dish_names else 0
+            sel_d = st.selectbox(
+                f"{day_name}_dinner",
+                options=all_dish_names,
+                index=d_idx,
+                format_func=dish_label,
+                key=f"sel_{di}_Dinner",
+                label_visibility="collapsed",
+            )
+            st.session_state.planner_grid[di]["Dinner"] = sel_d
+            if sel_d in name_to_id:
+                rid = name_to_id[sel_d]
+                chosen_recipe_ids.append(rid)
+                if id_to_record[rid].get("region_or_type") == DAL_TYPE:
+                    dal_counter[sel_d] += 1
+                if is_expanded:
+                    st.markdown(get_chips_html(id_to_record[rid]), unsafe_allow_html=True)
+
+    # Repeat warning banner
+    dal_repeats = [dish for dish, count in dal_counter.items() if count > 2]
+    if dal_repeats:
+        st.markdown(
+            f"""
+            <div class="warning-banner">
+                ⚠️ <strong>Same dal appears more than twice this week!</strong> ({', '.join(dal_repeats)})
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="success-banner">
+                ✅ Great job! Dal variety is well balanced this week (no dal repeated > 2 times).
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    return chosen_recipe_ids
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# LEFT COLUMN: 💬 Chat Assistant
-# ──────────────────────────────────────────────────────────────────────────────
-with col_chat:
+def render_grocery_card(chosen_recipe_ids: list[int]):
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    g_header_left, g_header_right = st.columns([7, 3])
+    with g_header_left:
+        st.markdown('<div class="card-title">🛒 Grocery List</div>', unsafe_allow_html=True)
+
+    unique_recipe_counts = collections.Counter(chosen_recipe_ids)
+    selections_payload = [
+        {"recipe_id": rid, "servings": st.session_state.family_size * count}
+        for rid, count in unique_recipe_counts.items()
+    ]
+
+    grocery_items = []
+    if selections_payload:
+        try:
+            grocery_data = build_grocery_list(selections_payload, records, quantities)
+            grocery_items = grocery_data.get("items", [])
+        except Exception:
+            grocery_items = []
+
+    if not grocery_items:
+        grocery_items = [
+            {"item": "Moong Dal", "display": "500 g"},
+            {"item": "Rice", "display": "1 kg"},
+            {"item": "Onion", "display": "500 g"},
+            {"item": "Tomato", "display": "500 g"},
+            {"item": "Green Chilli", "display": "50 g"},
+            {"item": "Coconut", "display": "2 pcs"},
+        ]
+
+    download_text = f"THALIPLANNER GROCERY LIST (Family Size: {st.session_state.family_size})\n"
+    download_text += "=" * 45 + "\n\n"
+    for item in grocery_items:
+        download_text += f"[ ] {item['item'].capitalize():<24} {item['display']}\n"
+    download_text += f"\nTotal Items: {len(grocery_items)}\n"
+
+    with g_header_right:
+        st.download_button(
+            label="📥 Download PDF",
+            data=download_text,
+            file_name=f"thaliplanner_grocery_list_{st.session_state.family_size}pax.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="dl_grocery_btn",
+        )
+
+    for idx, item_data in enumerate(grocery_items):
+        item_name = item_data["item"].capitalize()
+        qty_display = item_data.get("display", f"{item_data.get('quantity', '')} {item_data.get('unit', '')}")
+
+        c_box, c_name, c_qty = st.columns([0.8, 6.2, 3.0])
+        with c_box:
+            st.checkbox("", key=f"g_item_{idx}", label_visibility="collapsed")
+        with c_name:
+            st.markdown(f"**{item_name}**")
+        with c_qty:
+            st.markdown(f"<span style='color: #4b5563; font-weight: 600;'>{qty_display}</span>", unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <div class="total-pill">
+            ✔️ Total Items: {len(grocery_items)}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def render_chat_section():
     st.markdown(
         """
         <div class="card-title" style="margin-bottom: 12px;">
@@ -574,7 +718,6 @@ with col_chat:
         unsafe_allow_html=True,
     )
 
-    # Chat history display
     chat_box = st.container()
     with chat_box:
         st.markdown('<div class="chat-container">', unsafe_allow_html=True)
@@ -612,7 +755,6 @@ with col_chat:
                     unsafe_allow_html=True,
                 )
 
-                # Feedback buttons (Helpful / Not Helpful)
                 mid = msg.get("msg_id", 0)
                 if mid:
                     fcol1, fcol2, _ = st.columns([1.6, 2.0, 3.0])
@@ -627,7 +769,6 @@ with col_chat:
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Chat Input with purple send button
     with st.container():
         input_col, send_col = st.columns([8.5, 1.5])
         with input_col:
@@ -638,13 +779,12 @@ with col_chat:
                 key="chat_input_text",
             )
         with send_col:
-            send_clicked = st.button("✈️", help="Send message", use_container_width=True)
+            send_clicked = st.button("✈️", help="Send message", use_container_width=True, key="send_chat_btn")
 
         if (send_clicked or user_input) and user_input.strip():
             now_time = datetime.datetime.now().strftime("%I:%M %p")
             prompt = user_input.strip()
 
-            # Add user message
             st.session_state.messages.append({
                 "role": "user",
                 "content": prompt,
@@ -666,195 +806,187 @@ with col_chat:
             st.rerun()
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# DYNAMIC PAGE ROUTING BASED ON NAV_MODE
+# ══════════════════════════════════════════════════════════════════════════════
+
 # ──────────────────────────────────────────────────────────────────────────────
-# RIGHT COLUMN: 📅 Weekly Thali Planner + 🛒 Grocery List
+# 1. 💬 Chat Assistant (Unified Side-by-Side Dashboard)
 # ──────────────────────────────────────────────────────────────────────────────
-with col_planner:
-    # ── Top Card: 📅 Weekly Thali Planner ──────────────────────────────────────
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+if nav_mode == "💬 Chat Assistant":
+    col_chat, col_planner = st.columns([4, 6], gap="large")
+    with col_chat:
+        render_chat_section()
+    with col_planner:
+        selected_ids = render_planner_card(is_expanded=False)
+        render_grocery_card(selected_ids)
 
-    header_left, header_mid, header_right = st.columns([5, 2.5, 2.5])
-    with header_left:
-        st.markdown('<div class="card-title">📅 Weekly Thali Planner</div>', unsafe_allow_html=True)
-    with header_mid:
-        selected_family_size = st.selectbox(
-            "Family Size:",
-            options=[1, 2, 4, 6, 8],
-            index=[1, 2, 4, 6, 8].index(st.session_state.family_size),
-            key="family_size_select",
-        )
-        st.session_state.family_size = selected_family_size
-    with header_right:
-        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
-        if st.button("💾 Save Plan", type="primary", use_container_width=True):
-            st.toast(f"Plan saved successfully for {st.session_state.family_size} people!", icon="💾")
 
-    # Table Header
-    th_day, th_bf, th_lunch, th_dinner = st.columns([2.0, 3.2, 3.2, 3.2])
-    th_day.markdown("**Day**")
-    th_bf.markdown("**Breakfast**")
-    th_lunch.markdown("**Lunch**")
-    th_dinner.markdown("**Dinner**")
+# ──────────────────────────────────────────────────────────────────────────────
+# 2. 📅 Meal Planner (Full-Screen 7-Day Thali Grid & Analytics)
+# ──────────────────────────────────────────────────────────────────────────────
+elif nav_mode == "📅 Meal Planner":
+    st.markdown('<div class="card-title" style="font-size: 22px; margin-bottom: 4px;">📅 Weekly Meal Planner Studio</div>', unsafe_allow_html=True)
+    st.caption("Plan your week's meals with dietary chips (🌱 Vegan, 🟢 Veg, 🧀 Paneer) and automatic Dal repeat protection.")
 
-    dal_counter = collections.Counter()
-    chosen_recipe_ids = []
+    # Control buttons
+    top_c1, top_c2, top_c3 = st.columns([6, 2, 2])
+    with top_c2:
+        if st.button("🎲 Auto-Fill Balanced Menu", use_container_width=True):
+            st.session_state.planner_grid = [
+                {meal: DEFAULT_GRID[d][meal] for meal in MEALS}
+                for d in range(len(DAYS))
+            ]
+            st.toast("Balanced Indian thali menu generated!", icon="✨")
+            st.rerun()
+    with top_c3:
+        if st.button("🗑️ Clear Entire Plan", use_container_width=True):
+            st.session_state.planner_grid = [
+                {meal: "— None —" for meal in MEALS}
+                for _ in range(len(DAYS))
+            ]
+            st.toast("Meal plan cleared.", icon="🗑️")
+            st.rerun()
 
-    # 7-day rows (Monday to Sunday)
-    for di, day_name in enumerate(DAYS):
-        r_day, r_bf, r_lunch, r_dinner = st.columns([2.0, 3.2, 3.2, 3.2])
-        r_day.markdown(f"**{day_name}**")
+    selected_ids = render_planner_card(is_expanded=True)
 
-        # Breakfast select
-        with r_bf:
-            curr_bf = st.session_state.planner_grid[di]["Breakfast"]
-            bf_idx = all_dish_names.index(curr_bf) if curr_bf in all_dish_names else 0
-            sel_bf = st.selectbox(
-                f"{day_name}_bf",
-                options=all_dish_names,
-                index=bf_idx,
-                format_func=dish_label,
-                key=f"sel_{di}_Breakfast",
-                label_visibility="collapsed",
-            )
-            st.session_state.planner_grid[di]["Breakfast"] = sel_bf
-            if sel_bf in name_to_id:
-                rid = name_to_id[sel_bf]
-                chosen_recipe_ids.append(rid)
-                if id_to_record[rid].get("region_or_type") == DAL_TYPE:
-                    dal_counter[sel_bf] += 1
+    # Weekly Summary Metrics
+    st.markdown("### 📊 Weekly Nutrition & Variety Summary")
+    total_slots = len(DAYS) * len(MEALS)
+    total_filled = len(selected_ids)
+    vegan_count = sum(1 for rid in selected_ids if classify(id_to_record[rid])[1])
+    paneer_count = sum(1 for rid in selected_ids if classify(id_to_record[rid])[2])
+    dal_count = sum(1 for rid in selected_ids if id_to_record[rid].get("region_or_type") == DAL_TYPE)
 
-        # Lunch select
-        with r_lunch:
-            curr_l = st.session_state.planner_grid[di]["Lunch"]
-            l_idx = all_dish_names.index(curr_l) if curr_l in all_dish_names else 0
-            sel_l = st.selectbox(
-                f"{day_name}_lunch",
-                options=all_dish_names,
-                index=l_idx,
-                format_func=dish_label,
-                key=f"sel_{di}_Lunch",
-                label_visibility="collapsed",
-            )
-            st.session_state.planner_grid[di]["Lunch"] = sel_l
-            if sel_l in name_to_id:
-                rid = name_to_id[sel_l]
-                chosen_recipe_ids.append(rid)
-                if id_to_record[rid].get("region_or_type") == DAL_TYPE:
-                    dal_counter[sel_l] += 1
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Meals Planned", f"{total_filled} / {total_slots}")
+    m2.metric("🌱 Vegan Meals", vegan_count)
+    m3.metric("🧀 Paneer Dishes", paneer_count)
+    m4.metric("🍲 Dal Servings", dal_count)
 
-        # Dinner select
-        with r_dinner:
-            curr_d = st.session_state.planner_grid[di]["Dinner"]
-            d_idx = all_dish_names.index(curr_d) if curr_d in all_dish_names else 0
-            sel_d = st.selectbox(
-                f"{day_name}_dinner",
-                options=all_dish_names,
-                index=d_idx,
-                format_func=dish_label,
-                key=f"sel_{di}_Dinner",
-                label_visibility="collapsed",
-            )
-            st.session_state.planner_grid[di]["Dinner"] = sel_d
-            if sel_d in name_to_id:
-                rid = name_to_id[sel_d]
-                chosen_recipe_ids.append(rid)
-                if id_to_record[rid].get("region_or_type") == DAL_TYPE:
-                    dal_counter[sel_d] += 1
 
-    # ── Dal Repeat Warning Check ──────────────────────────────────────────────
-    dal_repeats = [dish for dish, count in dal_counter.items() if count > 2]
-    if dal_repeats:
-        st.markdown(
-            f"""
-            <div class="warning-banner">
-                ⚠️ <strong>Same dal appears more than twice this week!</strong> ({', '.join(dal_repeats)})
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            """
-            <div class="success-banner">
-                ✅ Great job! Dal variety is well balanced this week (no dal repeated > 2 times).
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+# ──────────────────────────────────────────────────────────────────────────────
+# 3. 🛒 Grocery List (Focused Scaled Shopping List)
+# ──────────────────────────────────────────────────────────────────────────────
+elif nav_mode == "🛒 Grocery List":
+    st.markdown('<div class="card-title" style="font-size: 22px; margin-bottom: 4px;">🛒 Smart Grocery Shopping List</div>', unsafe_allow_html=True)
+    st.caption(f"Automatically scaled to your family size ({st.session_state.family_size} people) based on recipes chosen in the Weekly Planner.")
 
-    st.markdown("</div>", unsafe_allow_html=True)  # End top card
+    # Gather selected recipe IDs from planner grid
+    chosen_ids = []
+    for day_dict in st.session_state.planner_grid:
+        for meal in MEALS:
+            dish = day_dict.get(meal)
+            if dish in name_to_id:
+                chosen_ids.append(name_to_id[dish])
 
-    # ── Bottom Card: 🛒 Grocery List ──────────────────────────────────────────
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    render_grocery_card(chosen_ids)
 
-    g_header_left, g_header_right = st.columns([7, 3])
-    with g_header_left:
-        st.markdown('<div class="card-title">🛒 Grocery List</div>', unsafe_allow_html=True)
+    # Detailed recipe contributions table
+    with st.expander("🔍 View Dish Scaling Details & Attributions", expanded=False):
+        if chosen_ids:
+            counts = collections.Counter(chosen_ids)
+            for rid, count in counts.items():
+                r = id_to_record[rid]
+                base_servings = r.get("servings", 4)
+                target_servings = st.session_state.family_size * count
+                scale = target_servings / base_servings if base_servings else 1.0
+                st.markdown(f"- **{r['dish_name']}**: Planned **{count} time(s)** → **{target_servings} servings** (Base: {base_servings}, Scaling: `{scale:.2f}x`)")
+        else:
+            st.info("No recipes currently selected in the Meal Planner.")
 
-    # Calculate grocery list dynamically from chosen recipes scaled to family size
-    unique_recipe_counts = collections.Counter(chosen_recipe_ids)
-    selections_payload = [
-        {"recipe_id": rid, "servings": st.session_state.family_size * count}
-        for rid, count in unique_recipe_counts.items()
-    ]
 
-    grocery_items = []
-    if selections_payload:
-        try:
-            grocery_data = build_grocery_list(selections_payload, records, quantities)
-            grocery_items = grocery_data.get("items", [])
-        except Exception:
-            grocery_items = []
-
-    # Fallback to items matching screenshot if empty
-    if not grocery_items:
-        grocery_items = [
-            {"item": "Moong Dal", "display": "500 g"},
-            {"item": "Rice", "display": "1 kg"},
-            {"item": "Onion", "display": "500 g"},
-            {"item": "Tomato", "display": "500 g"},
-            {"item": "Green Chilli", "display": "50 g"},
-            {"item": "Coconut", "display": "2 pcs"},
-        ]
-
-    # Generate text for Download PDF / Export button
-    download_text = f"THALIPLANNER GROCERY LIST (Family Size: {st.session_state.family_size})\n"
-    download_text += "=" * 45 + "\n\n"
-    for item in grocery_items:
-        download_text += f"[ ] {item['item'].capitalize():<24} {item['display']}\n"
-    download_text += f"\nTotal Items: {len(grocery_items)}\n"
-
-    with g_header_right:
-        st.download_button(
-            label="📥 Download PDF",
-            data=download_text,
-            file_name=f"thaliplanner_grocery_list_{st.session_state.family_size}pax.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
-
-    # Display checklist items in a table-like layout
-    g_col_check, g_col_name, g_col_qty = st.columns([1, 6, 3])
-    for idx, item_data in enumerate(grocery_items):
-        item_name = item_data["item"].capitalize()
-        qty_display = item_data.get("display", f"{item_data.get('quantity', '')} {item_data.get('unit', '')}")
-
-        c_box, c_name, c_qty = st.columns([0.8, 6.2, 3.0])
-        with c_box:
-            st.checkbox("", key=f"g_item_{idx}", label_visibility="collapsed")
-        with c_name:
-            st.markdown(f"**{item_name}**")
-        with c_qty:
-            st.markdown(f"<span style='color: #4b5563; font-weight: 600;'>{qty_display}</span>", unsafe_allow_html=True)
-
-    # Footer total items
+# ──────────────────────────────────────────────────────────────────────────────
+# 4. ℹ️ About (Project Documentation, 20 Recipes & Architecture)
+# ──────────────────────────────────────────────────────────────────────────────
+elif nav_mode == "ℹ️ About":
+    st.markdown('<div class="card-title" style="font-size: 24px; margin-bottom: 6px;">ℹ️ About ThaliPlanner</div>', unsafe_allow_html=True)
     st.markdown(
-        f"""
-        <div class="total-pill">
-            ✔️ Total Items: {len(grocery_items)}
-        </div>
-        """,
-        unsafe_allow_html=True,
+        """
+        **ThaliPlanner** plans a week of authentic Indian vegetarian meals from open Wikibooks recipes 
+        and converts your meal choices into one combined, scaled grocery list for your family.
+        """
     )
 
-    st.markdown("</div>", unsafe_allow_html=True)  # End bottom card
+    tab_persona, tab_recipes, tab_arch, tab_milestones = st.tabs([
+        "👨‍👩‍👧‍👦 User Persona", "📖 20 Recipes Catalogue", "🏗️ Technical Architecture", "🚀 Milestones (Days 1–12)"
+    ])
+
+    with tab_persona:
+        st.markdown(
+            """
+            ### 👨‍👩‍👧‍👦 Target Persona: The Kopargaon Family
+            - **Who**: A working couple in **Kopargaon** with two kids.
+            - **Routine**: Cook healthy, home-made vegetarian food every day.
+            - **Goal**: Plan their week's dal-sabzi-rice menu on Sunday and buy all groceries in one trip.
+            - **Pain Points**:
+              - Repeating the same dal/curry too often due to lack of planning.
+              - Inaccurate grocery purchases (running out of ginger or buying excess veggies).
+              - Difficulty balancing nutrition (vegan vs dairy/paneer meals).
+            - **How ThaliPlanner Helps**:
+              - 7-day grid with Breakfast, Lunch, Dinner.
+              - ⚠️ Automatic **Repeat Warning** if the same dal appears more than twice a week.
+              - Pure-arithmetic grocery scaling that sums common ingredients across recipes into grams & kilograms.
+            """
+        )
+
+    with tab_recipes:
+        st.markdown("### 🍛 20 Authentic Indian Recipes in Database")
+        st.caption("Extracted and normalized from open Wikibooks (Category:Indian recipes & Cookbook:Dal).")
+
+        filter_type = st.selectbox("Filter by Category:", ["All"] + sorted(list(set(r.get("region_or_type", "Other") for r in records))))
+        
+        display_records = records if filter_type == "All" else [r for r in records if r.get("region_or_type") == filter_type]
+
+        cols = st.columns(3)
+        for i, rec in enumerate(display_records):
+            with cols[i % 3]:
+                st.markdown('<div class="card" style="padding: 14px; margin-bottom: 12px;">', unsafe_allow_html=True)
+                icon = DISH_ICONS.get(rec["dish_name"], "🍲")
+                st.markdown(f"**{icon} {rec['dish_name']}**")
+                st.caption(f"**Category:** {rec.get('region_or_type', 'N/A')} | **Servings:** {rec.get('servings', 4)}")
+                st.markdown(get_chips_html(rec), unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 11px; color: #64748b; margin-top: 6px;'><strong>Ingredients:</strong> {', '.join(rec.get('ingredients', [])[:5])}...</div>", unsafe_allow_html=True)
+                st.markdown(f"<a href='{rec.get('source_url', '#')}' target='_blank' style='font-size: 11px; color: #5d50c6;'>View on Wikibooks ↗</a>", unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+    with tab_arch:
+        st.markdown(
+            """
+            ### 🏗️ Technical Architecture & Pipeline
+            
+            1. **Data Ingestion (`app/fetch.py`, `app/ingest.py`)**:
+               - Fetches Wikibooks HTML/wikitext via MediaWiki API.
+               - Normalizes into 20 structured records in `data/records.json`.
+            2. **Embeddings & Vector Store (`app/chunking.py`, `app/vectorstore.py`)**:
+               - Recursive text chunking with `all-MiniLM-L6-v2` embeddings in **ChromaDB**.
+            3. **RAG with Citation Guard (`app/rag.py`)**:
+               - Answers from verified evidence; abstains on out-of-scope/nutrition queries.
+            4. **Agentic Workflow (`app/graph.py`, `app/tools.py`)**:
+               - **LangGraph** StateGraph with memory checkpointer and human-in-the-loop approval.
+               - `build_grocery_list()` scales ingredients, converts units (cup/tbsp/tsp → grams/ml), and merges duplicates.
+            5. **FastAPI Backend (`app/main.py`)**:
+               - `/health`, `/records`, `/search`, `/ask`, `/agent` endpoints.
+            6. **Streamlit UI (`ui/app.py`)**:
+               - Interactive 7-day grid, dal repeat warnings, thumbs up/down feedback, and grocery export.
+            """
+        )
+
+    with tab_milestones:
+        st.markdown(
+            """
+            ### 🚀 Milestones (Days 1–12)
+            - ✅ **Day 1**: MediaWiki API recipe scraper & intro scripts.
+            - ✅ **Day 2**: Recipe data models, parsing, and CLI.
+            - ✅ **Day 3**: Data pipeline & normalized 20 recipes in `data/records.json`.
+            - ✅ **Day 4**: Pandas dataset exploration & FastAPI basic search endpoints.
+            - ✅ **Day 5**: LLM prompt engineering & evaluation benchmark questions.
+            - ✅ **Day 6**: LLM Chat integration with Groq/Gemini & prompt versioning.
+            - ✅ **Day 7**: Semantic search with ChromaDB & Sentence-Transformers.
+            - ✅ **Day 8**: RAG with citation verification & `build_grocery_list()` scaling tool.
+            - ✅ **Day 9**: LangGraph agent with approval step & Streamlit prototype.
+            - ✅ **Day 10**: Checkpoint 2 full Streamlit UI with 7-day thali grid & dal repeat warning.
+            - ✅ **Day 11**: Pytest suite (9/9 passing), Ruff linter (0 errors), Dockerfile & docker-compose.
+            - ✅ **Day 12**: GitHub Actions CI workflow (`.github/workflows/ci.yml`) & repository sync.
+            """
+        )
