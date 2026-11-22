@@ -17,6 +17,7 @@ import collections
 import datetime
 import json
 import pathlib
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -103,7 +104,36 @@ def get_rag_function():
         return None
 
 
+def format_chat_markdown(text: str) -> str:
+    """Safely format markdown links and bolding for clean chat HTML rendering."""
+    # Convert markdown links [Text](url) to styled anchor tags
+    text = re.sub(
+        r'\[([^\]]+)\]\((https?://[^\)]+)\)',
+        r'<a href="\2" target="_blank" rel="noopener noreferrer" style="color: #4f46e5; text-decoration: underline; font-weight: 600;">\1</a>',
+        text,
+    )
+    # Convert bold **text** to <strong>text</strong>
+    text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+    # Convert newlines to <br>
+    text = text.replace('\n', '<br>')
+    return text
+
+
 def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int = 4) -> dict:
+    q_low = (question or "").lower()
+    is_rag_specific = any(term in q_low for term in [
+        "source", "where can i find", "ingredient", "calorie", "nutrition",
+        "south indian", "vegan", "tell me about", "what dishes", "recipe for",
+        "link for", "website for", "what is the source"
+    ])
+
+    rag_fn = get_rag_function()
+    if is_rag_specific and rag_fn:
+        try:
+            return rag_fn(question)
+        except Exception:
+            pass
+
     endpoint = f"{API_BASE}/agent" if use_agent else f"{API_BASE}/ask"
     payload_data = {"message": question} if use_agent else {"question": question}
     try:
@@ -113,7 +143,7 @@ def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int 
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except Exception:
         pass
@@ -124,22 +154,20 @@ def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int 
             res = run_agent(question)
             return {
                 "answer": res.get("answer", "Here is your plan."),
-                "citations": [{"source": "Wikibooks - Indian Recipes", "chunk": "Recipe catalogue data"}],
+                "citations": [{"title": "Wikibooks – Indian Recipes", "source": "https://en.wikibooks.org/wiki/Category:Indian_recipes"}],
                 "grocery_list": res.get("grocery_list"),
                 "abstained": False,
             }
         except Exception:
             pass
 
-    rag_fn = get_rag_function()
     if rag_fn:
         try:
             return rag_fn(question)
         except Exception as exc:
             return {"answer": f"⚠️ RAG error: {exc}", "citations": [], "abstained": True}
 
-    q_lower = question.lower()
-    if "plan" in q_lower or "lunch" in q_lower or "dal" in q_lower:
+    if "plan" in q_low or "lunch" in q_low or "dal" in q_low:
         return {
             "answer": (
                 "Here is your 3-day lunch plan:\n\n"
@@ -148,7 +176,7 @@ def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int 
                 "✅ **Wednesday:** Sambar I\n\n"
                 "Would you like to add these to your weekly planner?"
             ),
-            "citations": [{"source": "Wikibooks – Indian Recipes", "chunk": "Indian Dal & Curry recipes"}],
+            "citations": [{"title": "Wikibooks – Indian Recipes", "source": "https://en.wikibooks.org/wiki/Cookbook:Moong_Dal"}],
             "abstained": False,
         }
 
@@ -156,7 +184,7 @@ def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int 
         "answer": (
             f"Based on our 20 Indian recipes catalogue, we recommend planning balanced vegetarian meals for {family_size} people."
         ),
-        "citations": [{"source": "Wikibooks – Indian Recipes", "chunk": "Cuisine of India"}],
+        "citations": [{"title": "Wikibooks – Indian Recipes", "source": "https://en.wikibooks.org/wiki/Category:Indian_recipes"}],
         "abstained": False,
     }
 
@@ -424,7 +452,13 @@ st.markdown(
     }
     
     .bot-bubble * {
-        color: #111827 !important;
+        color: #111827;
+    }
+    
+    .bot-bubble a, .citation-box a.citation-tag {
+        color: #5d50c6 !important;
+        font-weight: 600 !important;
+        text-decoration: underline !important;
     }
     
     .citation-box {
@@ -435,17 +469,12 @@ st.markdown(
         padding-top: 8px;
         border-top: 1px solid #f1f5f9;
         font-size: 11px;
-        color: #6b7280 !important;
+        color: #6b7280;
     }
     
-    .citation-box span, .citation-box span * {
+    .citation-box span {
         color: #6b7280 !important;
     }
-    
-    .citation-tag {
-        color: #5d50c6 !important;
-        font-weight: 600;
-        text-decoration: underline;
     }
 
     .warning-banner {
@@ -808,10 +837,15 @@ def render_chat_section():
                     unsafe_allow_html=True,
                 )
             else:
-                formatted_content = msg["content"].replace("\n", "<br>")
-                citation_source = "Wikibooks – Indian Recipes"
+                formatted_content = format_chat_markdown(msg["content"])
+                citation_title = "Wikibooks – Indian Recipes"
+                citation_url = "https://en.wikibooks.org/wiki/Category:Indian_recipes"
                 if msg.get("citations") and len(msg["citations"]) > 0:
-                    citation_source = msg["citations"][0].get("source", citation_source)
+                    first_c = msg["citations"][0]
+                    citation_title = first_c.get("title") or first_c.get("source") or citation_title
+                    raw_src = str(first_c.get("source", ""))
+                    if raw_src.startswith("http"):
+                        citation_url = raw_src
                 timestamp = msg.get("time", "10:45 AM")
 
                 st.markdown(
@@ -819,9 +853,9 @@ def render_chat_section():
                     <div class="bot-bubble-wrapper">
                         <div class="bot-avatar">🤖</div>
                         <div class="bot-bubble">
-                            <div>{formatted_content}</div>
+                            <div style="line-height: 1.5;">{formatted_content}</div>
                             <div class="citation-box">
-                                <span>📖 <a class="citation-tag" href="#">Source: {citation_source}</a></span>
+                                <span>📖 <a class="citation-tag" href="{citation_url}" target="_blank" rel="noopener noreferrer">Source: {citation_title}</a></span>
                                 <span>{timestamp}</span>
                             </div>
                         </div>
@@ -845,18 +879,19 @@ def render_chat_section():
         st.markdown("</div>", unsafe_allow_html=True)
 
     with st.container():
-        input_col, send_col = st.columns([8.5, 1.5])
-        with input_col:
-            user_input = st.text_input(
-                "Ask anything",
-                placeholder="Ask anything about ThaliPlanner...",
-                label_visibility="collapsed",
-                key="chat_input_text",
-            )
-        with send_col:
-            send_clicked = st.button("✈️", help="Send message", use_container_width=True, key="send_chat_btn")
+        with st.form("chat_input_form", clear_on_submit=True):
+            input_col, send_col = st.columns([8.5, 1.5])
+            with input_col:
+                user_input = st.text_input(
+                    "Ask anything",
+                    placeholder="Ask anything about ThaliPlanner...",
+                    label_visibility="collapsed",
+                    key="chat_input_field",
+                )
+            with send_col:
+                send_clicked = st.form_submit_button("✈️", help="Send message", use_container_width=True)
 
-        if (send_clicked or user_input) and user_input.strip():
+        if send_clicked and user_input and user_input.strip():
             now_time = datetime.datetime.now().strftime("%I:%M %p")
             prompt = user_input.strip()
 

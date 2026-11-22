@@ -1,11 +1,15 @@
 """S1: Embedding-based semantic search and 10-question evaluation."""
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+# Prefer offline cached weights to prevent slow 30-second HuggingFace network retry timeouts
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
 from app.chunking import ROOT, chunk_documents
 

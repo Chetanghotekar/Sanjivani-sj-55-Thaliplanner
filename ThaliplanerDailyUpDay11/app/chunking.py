@@ -58,24 +58,25 @@ def split_text(text: str, chunk_size: int = CHUNK_SIZE,
     return chunks
 
 
-def _metadata(source: str, page: int, title: str, chunk_index: int) -> dict[str, Any]:
+def _metadata(source: str, page: int, title: str, chunk_index: int, category: str = "") -> dict[str, Any]:
     return {
         "source": str(source),
         "page": int(page),
         "title": str(title or Path(source).stem),
         "chunk_index": int(chunk_index),
+        "category": str(category),
     }
 
 
 def _chunks_for_text(text: str, source: str, title: str,
                      page: int = 1, chunk_size: int = CHUNK_SIZE,
-                     overlap: int = CHUNK_OVERLAP) -> list[dict[str, Any]]:
+                     overlap: int = CHUNK_OVERLAP, category: str = "") -> list[dict[str, Any]]:
     pieces = split_text(_clean_text(text), chunk_size=chunk_size, overlap=overlap)
     output = []
     for index, piece in enumerate(pieces):
         output.append({
             "text": piece,
-            "metadata": _metadata(source, page, title, index),
+            "metadata": _metadata(source, page, title, index, category=category),
         })
     return output
 
@@ -98,20 +99,21 @@ def _record_chunks(chunk_size: int = CHUNK_SIZE,
         if not isinstance(record, dict):
             continue
         title = str(record.get("dish_name") or "Untitled recipe")
+        category = str(record.get("region_or_type") or "Indian")
         ingredients = record.get("ingredients") or []
         if not isinstance(ingredients, list):
             ingredients = [str(ingredients)]
 
         text = (
             f"Recipe: {title}. "
-            f"Category: {record.get('region_or_type', 'Unknown')}. "
+            f"Category: {category}. "
             f"Servings: {record.get('servings', 'Not specified')}. "
             f"Ingredients: {', '.join(map(str, ingredients))}. "
             f"Time and difficulty: {record.get('time_and_difficulty', 'Not specified')}."
         )
-        source = str(record.get("source_url") or "data/records.json")
+        source = str(record.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes")
         output.extend(_chunks_for_text(text, source, title, page=1,
-                                       chunk_size=chunk_size, overlap=overlap))
+                                       chunk_size=chunk_size, overlap=overlap, category=category))
     return output
 
 
@@ -146,23 +148,21 @@ def _read_document(path: Path) -> tuple[str, str]:
 
 def chunk_documents(chunk_size: int = CHUNK_SIZE,
                     overlap: int = CHUNK_OVERLAP) -> list[dict[str, Any]]:
-    """Chunk records.json plus project docs and the raw recipe HTML.
+    """Chunk records.json plus clean project docs.
 
-    Each result has `text` and metadata containing `source`, `page`, `title`.
-    Prompts, README.md, evaluation outputs and the Chroma database are
-    intentionally excluded: they are not recipe knowledge, and README.md is
-    rewritten by eval/run_eval.py, which would make evaluations unrepeatable.
+    Each result has `text` and metadata containing `source`, `page`, `title`, and `category`.
+    Excludes raw Wikibooks HTML category dumps to keep recipe chunks clean and accurate.
     """
     chunks = _record_chunks(chunk_size=chunk_size, overlap=overlap)
 
-    candidate_dirs = [ROOT / "docs", ROOT / "data" / "raw"]
+    candidate_dirs = [ROOT / "docs"]
     candidate_files = []
 
     for folder in candidate_dirs:
         if folder.exists():
             candidate_files.extend(
                 path for path in folder.rglob("*")
-                if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
+                if path.is_file() and path.suffix.lower() in {".md", ".txt"}
             )
 
     seen = set()
@@ -176,10 +176,6 @@ def chunk_documents(chunk_size: int = CHUNK_SIZE,
         if source in seen:
             continue
         seen.add(source)
-
-        # The structured recipe JSON is already converted into one chunk per recipe.
-        if path.resolve() == DATA_FILE.resolve():
-            continue
 
         text, title = _read_document(path)
         chunks.extend(_chunks_for_text(text, source, title, page=1,

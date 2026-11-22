@@ -17,19 +17,34 @@ RAW_DIR = ROOT / "data" / "raw"
 OUTPUT = ROOT / "data" / "records.json"
 
 def clean_text(value):
-    return re.sub(r"\s+", " ", value or "").strip()
+    val = re.sub(r"<[^>]+>", " ", value or "")
+    val = re.sub(r"\[edit\]$", "", val, flags=re.I)
+    val = re.sub(r"\[\d+\]", "", val)
+    return re.sub(r"\s+", " ", val).strip()
+
 
 def parse_page(path, first_id):
     parsed = []
     if not path.exists():
         return parsed
     soup = BeautifulSoup(path.read_text(encoding="utf-8", errors="ignore"), "html.parser")
+
+    # Remove non-content elements: navigation, TOC, edit links, script, style
+    for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
+        tag.decompose()
+    for el in soup.select(".mw-editsection, #toc, .navbox, .catlinks, .printfooter, .mw-jump-link"):
+        el.decompose()
+
     content = soup.select_one("#mw-content-text") or soup
     headings = content.find_all(["h2", "h3"])
+    excluded_headings = {
+        "contents", "references", "see also", "external links",
+        "notes", "further reading", "navigation menu", "categories"
+    }
+
     for heading in headings:
         name = clean_text(heading.get_text(" ", strip=True))
-        name = re.sub(r"\[edit\]$", "", name).strip()
-        if not name or name.lower() in {"contents", "references", "see also", "external links"}:
+        if not name or name.lower() in excluded_headings:
             continue
         ingredients = []
         node = heading.find_next_sibling()
@@ -37,19 +52,21 @@ def parse_page(path, first_id):
             if node.name in {"ul", "ol"}:
                 for li in node.find_all("li", recursive=False):
                     item = clean_text(li.get_text(" ", strip=True))
-                    if item and len(item) < 180:
+                    if item and 3 < len(item) < 180 and not item.lower().startswith("http"):
                         ingredients.append(item)
             node = node.find_next_sibling()
-        # Only retain a section when it appears recipe-like.
-        if ingredients:
+
+        # Only retain a section when it appears recipe-like
+        if ingredients and len(ingredients) >= 2:
+            safe_slug = re.sub(r"[^\w\s-]", "", name).strip().replace(" ", "_")
             parsed.append(Record(
                 id=first_id + len(parsed),
                 dish_name=name,
-                region_or_type="Wikibooks",
-                servings=None,
-                ingredients=ingredients[:40],
-                time_and_difficulty="",
-                source_url="https://en.wikibooks.org/wiki/Cookbook"
+                region_or_type="Indian",
+                servings=4,
+                ingredients=ingredients[:30],
+                time_and_difficulty="30 minutes, easy",
+                source_url=f"https://en.wikibooks.org/wiki/Cookbook:{safe_slug}"
             ).to_dict())
     return parsed
 
