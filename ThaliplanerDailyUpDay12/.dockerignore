@@ -21,5 +21,11 @@ dist
 .scratch
 
 # Docker ignore
-Dockerfile
-docker-compose.yml
+Day1Task
+Day3Task
+ThaliplanerDailyUp*
+Sanjivani-sj-55-Thaliplanner
+chroma_db
+.pytest_cache
+.ruff_cache
+

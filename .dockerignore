@@ -1,0 +1,31 @@
+# Dockerignore for ThaliPlanner project
+# -------------------------------------------------
+# Exclude virtual environment, python cache, git files, and build artifacts
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+build
+dist
+*.egg-info
+*.egg
+*.log
+.git
+.gitignore
+*.sqlite3
+*.db
+*.DS_Store
+.scratch
+
+# Docker ignore
+Day1Task
+Day3Task
+ThaliplanerDailyUp*
+Sanjivani-sj-55-Thaliplanner
+chroma_db
+.pytest_cache
+.ruff_cache
+

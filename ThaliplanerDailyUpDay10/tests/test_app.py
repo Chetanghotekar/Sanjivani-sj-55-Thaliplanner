@@ -8,7 +8,7 @@ import app.main as main
 from app.chunking import chunk_documents, split_text
 from app.llm import LLMError
 from app.prompt_loader import PROMPTS_DIR, build_system_prompt
-from app.rag import abstain_answer, answer_question, should_abstain
+from app.rag import answer_question, should_abstain
 
 client = TestClient(main.app)
 

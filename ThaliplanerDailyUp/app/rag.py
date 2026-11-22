@@ -1,7 +1,6 @@
 """Retrieval-augmented answers for ThaliPlanner with source citations"""
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from app.vectorstore import search_chunks

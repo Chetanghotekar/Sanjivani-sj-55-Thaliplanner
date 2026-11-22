@@ -6,7 +6,6 @@ The script writes eval/eval_results.md and replaces the winner section in README
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import numpy as np

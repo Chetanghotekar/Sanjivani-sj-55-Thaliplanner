@@ -8,6 +8,11 @@ exclude = [
     ".pytest_cache",
     ".git",
     "Sanjivani-sj-55-Thaliplanner",
+    "Day1Task",
+    "Day3Task",
+    "ThaliplanerDailyUp",
+    "ThaliplanerDailyUpDay08-Day09",
+    "ThaliplanerDailyUpDay10",
 ]
 
 [tool.ruff.lint]
