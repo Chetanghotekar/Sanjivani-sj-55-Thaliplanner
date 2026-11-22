@@ -154,3 +154,28 @@ Open http://localhost:8501
 
 ### UI File
 - `ui/app.py` — self-contained Streamlit app (~280 lines)
+
+## Day 11: Automated Testing & Containerization (S1 & S2)
+- **S1 Tests:** `tests/test_day11.py` with 10 passing Pytest tests covering `/health`, recipe loading, smart search, `/ask` with abstain guard, fake LLM fallback, agent grocery tool scaling, unit conversions, item normalization, and numerical cooking time filtering.
+- **Ruff Linter:** `ruff check .` passes with 0 warnings.
+- **S2 Containerization:** `Dockerfile` + `.dockerignore` + `docker-compose.yml` to spin up both FastAPI backend (port 8000) and Streamlit UI (port 8501) with one command:
+  ```bash
+  docker compose up --build
+  ```
+
+## Day 12: Continuous Integration & Public Cloud Deployment (S1 & S2)
+
+### S1: CI Workflow & Feature Branch PR
+- **GitHub Actions CI Workflow:** `.github/workflows/ci.yml` runs automatically on pushes and PRs:
+  1. `lint-and-test`: runs `ruff check .` and `pytest tests/test_day11.py -v`.
+  2. `docker-build`: builds Docker image `thaliplanner:latest`.
+- **Feature Branch PR:** Changes developed in feature branch `feature/day12-deployment` and merged into `main` after CI is completely green.
+
+### S2: Live Public Deployment (Render & Hugging Face Spaces)
+The project is configured for cloud hosting with live public endpoints:
+- **Public API & Health Check:** [https://sanjivani-thaliplanner-api.onrender.com/health](https://sanjivani-thaliplanner-api.onrender.com/health) (returns `{"status": "ok"}`)
+- **Interactive Swagger Docs:** [https://sanjivani-thaliplanner-api.onrender.com/docs](https://sanjivani-thaliplanner-api.onrender.com/docs)
+- **Live Streamlit UI (Render):** [https://sanjivani-thaliplanner-ui.onrender.com](https://sanjivani-thaliplanner-ui.onrender.com)
+- **Hugging Face Space:** [https://huggingface.co/spaces/Chetanghotekar/ThaliPlanner](https://huggingface.co/spaces/Chetanghotekar/ThaliPlanner)
+- **Render Blueprint:** Configured in `render.yaml` for instant 1-click zero-config deployment.
+

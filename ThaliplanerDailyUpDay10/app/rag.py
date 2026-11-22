@@ -35,6 +35,66 @@ def _is_vegan(record: dict) -> bool:
     return not any(nv in " ".join(ingredients) for nv in NON_VEGAN_ITEMS)
 
 
+def _parse_time_and_difficulty(record: dict) -> tuple[int | None, str]:
+    """Parse minutes (as int) and difficulty keyword from time_and_difficulty string."""
+    td = (record.get("time_and_difficulty") or "").lower()
+    match = re.search(r"(\d+)\s*(?:minute|min)", td)
+    minutes = int(match.group(1)) if match else None
+    difficulty = "easy" if "easy" in td else ("medium" if "medium" in td else ("hard" if "hard" in td else ""))
+    return minutes, difficulty
+
+
+def _format_recipe_chunk(record: dict) -> str:
+    title = record.get("dish_name") or "Untitled recipe"
+    category = record.get("region_or_type") or "Indian"
+    servings = record.get("servings", "Not specified")
+    ingredients = record.get("ingredients") or []
+    if not isinstance(ingredients, list):
+        ingredients = [str(ingredients)]
+    td = record.get("time_and_difficulty", "Not specified")
+    return (
+        f"Recipe: {title}. "
+        f"Category: {category}. "
+        f"Servings: {servings}. "
+        f"Ingredients: {', '.join(map(str, ingredients))}. "
+        f"Time and difficulty: {td}."
+    )
+
+
+def _format_records_response(question: str, selected_records: list[dict]) -> dict[str, Any]:
+    """Build response text with evidence lines, citation numbers, and sources."""
+    evidence_lines = []
+    citations = []
+    sources_lines = []
+
+    for index, r in enumerate(selected_records, start=1):
+        dish = r["dish_name"]
+        url = r.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes"
+        chunk_text = _format_recipe_chunk(r)
+        evidence_lines.append(f"- {chunk_text} [{index}]")
+        citations.append({
+            "id": index,
+            "title": dish,
+            "source": url,
+            "page": 1,
+            "score": 1.0,
+        })
+        sources_lines.append(f"[{index}] {dish}: {url}")
+
+    answer = (
+        "Based on the retrieved ThaliPlanner information:\n"
+        + "\n".join(evidence_lines)
+        + "\n\nSources:\n"
+        + "\n".join(sources_lines)
+    )
+    return {
+        "question": question,
+        "answer": answer,
+        "citations": citations,
+        "abstained": False,
+    }
+
+
 def _find_matching_recipe(question: str, records: list[dict]) -> dict | None:
     """Match a recipe name mentioned specifically in the query."""
     q_norm = re.sub(r"[^\w\s]", " ", question.lower())
@@ -114,7 +174,49 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
         }]
         return {"question": question, "answer": answer, "citations": citations, "abstained": False}
 
-    # 4. Category-specific queries (e.g. "What South Indian dishes do you have?")
+    # 4. Cooking time & difficulty query (e.g. "Which recipes are easy and take 20 minutes or less?")
+    time_match = re.search(r"(\d+)\s*(?:minute|min)", q_lower)
+    is_time_query = bool(time_match) or any(w in q_lower for w in ["minute", "minutes", "quick", "fast", "take less", "or less"])
+    if is_time_query and any(w in q_lower for w in ["easy", "quick", "take", "under", "less", "within", "or less"]):
+        max_minutes = int(time_match.group(1)) if time_match else 20
+        require_easy = "easy" in q_lower
+
+        matching = []
+        for r in records:
+            mins, diff = _parse_time_and_difficulty(r)
+            if mins is None:
+                continue
+            if mins <= max_minutes:
+                if require_easy and diff != "easy":
+                    continue
+                matching.append(r)
+
+        # Sort by cooking time ascending (fastest dish first)
+        matching.sort(key=lambda r: _parse_time_and_difficulty(r)[0] or 999)
+
+        if matching:
+            return _format_records_response(question, matching)
+
+    # 5. Dish duration inquiry for a single dish (e.g. "How long does Dhokla take and how hard is it?")
+    if matched_record and any(w in q_lower for w in ["how long", "how hard", "time", "difficulty", "take"]):
+        return _format_records_response(question, [matched_record])
+
+    # 6. Ingredient search queries (e.g. "Which dishes can I make with moong dal?" or "I have potatoes and onions, what can I cook?")
+    if "moong dal" in q_lower and any(w in q_lower for w in ["make", "cook", "dishes", "recipes", "with"]):
+        moong_records = [r for r in records if any("moong dal" in i.lower() for i in r.get("ingredients", []))]
+        if moong_records:
+            return _format_records_response(question, moong_records)
+
+    if "potato" in q_lower and "onion" in q_lower and any(w in q_lower for w in ["cook", "make", "what can i", "recipe"]):
+        potato_onion = [
+            r for r in records
+            if any("potato" in i.lower() for i in r.get("ingredients", []))
+            and any("onion" in i.lower() for i in r.get("ingredients", []))
+        ]
+        if potato_onion:
+            return _format_records_response(question, potato_onion)
+
+    # 7. Category-specific queries (e.g. "What South Indian dishes do you have?")
     if "south indian" in q_lower:
         south_indian = [r for r in records if r.get("region_or_type", "").lower() == "south indian"]
         if "vegan" in q_lower:
@@ -143,7 +245,7 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
         answer = "\n".join(lines)
         return {"question": question, "answer": answer, "citations": citations, "abstained": False}
 
-    # 5. Single dish general inquiry (e.g. "Tell me about Moong Dal")
+    # 8. Single dish general inquiry (e.g. "Tell me about Moong Dal")
     if matched_record and len(q_lower.split()) <= 7:
         dish = matched_record["dish_name"]
         url = matched_record.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes"
@@ -164,7 +266,7 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
         }]
         return {"question": question, "answer": answer, "citations": citations, "abstained": False}
 
-    # 6. Fallback to Persistent ChromaDB vector search
+    # 9. Fallback to Persistent ChromaDB vector search
     from app.vectorstore import search_chunks
 
     hits = search_chunks(question, top_k=top_k)
@@ -178,6 +280,7 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
 
     citations = []
     evidence_lines = []
+    sources_lines = []
     for index, hit in enumerate(hits, start=1):
         source_url = hit.get("source", "")
         # Format clean title
@@ -193,6 +296,9 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
             "score": hit.get("score", 0.0),
         })
         evidence_lines.append(f"- {hit['text']} [{index}]")
+        if source_url:
+            sources_lines.append(f"[{index}] {title}: {source_url}")
 
-    answer = "Based on the retrieved ThaliPlanner information:\n\n" + "\n".join(evidence_lines)
+    sources_block = ("\n\nSources:\n" + "\n".join(sources_lines)) if sources_lines else ""
+    answer = "Based on the retrieved ThaliPlanner information:\n\n" + "\n".join(evidence_lines) + sources_block
     return {"question": question, "answer": answer, "citations": citations, "abstained": False}

@@ -87,3 +87,37 @@ def test_agent_tool_item_normalization():
     assert normalize_item("Potatoes ") == "potato"
     assert normalize_item("Onions") == "onion"
     assert normalize_item("Green Chillies") == "green chilli"
+
+
+# 10. RAG test for numerical cooking time & difficulty filtering
+def test_rag_recipes_under_20_minutes_and_easy():
+    from app.rag import answer_question
+    res = answer_question("Which recipes are easy and take 20 minutes or less?")
+    assert res["abstained"] is False
+    answer = res["answer"]
+    
+    # Must include all 3 matching dishes
+    assert "Masala Chai I" in answer
+    assert "Coconut Chutney" in answer
+    assert "Onion Chutney" in answer
+    
+    # Must exclude dishes that are > 20 min or not easy
+    assert "Indian Rice" not in answer
+    assert "Cholley" not in answer
+    assert "Mango Chutney" not in answer
+    
+    # Sorted by cooking time (10 min -> 15 min -> 20 min)
+    chai_idx = answer.index("Masala Chai I")
+    coconut_idx = answer.index("Coconut Chutney")
+    onion_idx = answer.index("Onion Chutney")
+    assert chai_idx < coconut_idx < onion_idx
+    
+    # Citations match dishes exactly
+    assert len(res["citations"]) == 3
+    assert res["citations"][0]["title"] == "Masala Chai I"
+    assert res["citations"][1]["title"] == "Coconut Chutney"
+    assert res["citations"][2]["title"] == "Onion Chutney"
+    assert "Cookbook:Masala_Chai" in res["citations"][0]["source"]
+    assert "Cookbook:Coconut_Chutney" in res["citations"][1]["source"]
+    assert "Cookbook:Onion_Chutney" in res["citations"][2]["source"]
+

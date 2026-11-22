@@ -87,11 +87,11 @@ def get_chips_html(record: dict) -> str:
     _, is_vegan, has_paneer = classify(record)
     chips = []
     if is_vegan:
-        chips.append('<span class="chip chip-vegan">🌱 Vegan</span>')
+        chips.append('<span class="chip chip-vegan">Vegan</span>')
     else:
-        chips.append('<span class="chip chip-veg">🟢 Veg</span>')
+        chips.append('<span class="chip chip-veg">Veg</span>')
     if has_paneer:
-        chips.append('<span class="chip chip-paneer">🧀 Paneer</span>')
+        chips.append('<span class="chip chip-paneer"> Paneer</span>')
     return " ".join(chips)
 
 
@@ -112,6 +112,12 @@ def format_chat_markdown(text: str) -> str:
         r'<a href="\2" target="_blank" rel="noopener noreferrer" style="color: #4f46e5; text-decoration: underline; font-weight: 600;">\1</a>',
         text,
     )
+    # Convert raw URLs into clickable anchor tags
+    text = re.sub(
+        r'(?<!href=")(https?://[^\s<]+)',
+        r'<a href="\1" target="_blank" rel="noopener noreferrer" style="color: #4f46e5; text-decoration: underline; font-weight: 600;">\1</a>',
+        text,
+    )
     # Convert bold **text** to <strong>text</strong>
     text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
     # Convert newlines to <br>
@@ -124,7 +130,8 @@ def call_chat_endpoint(question: str, use_agent: bool = False, family_size: int 
     is_rag_specific = any(term in q_low for term in [
         "source", "where can i find", "ingredient", "calorie", "nutrition",
         "south indian", "vegan", "tell me about", "what dishes", "recipe for",
-        "link for", "website for", "what is the source"
+        "link for", "website for", "what is the source", "minute", "minutes",
+        "easy", "20 minutes", "how long", "how hard"
     ])
 
     rag_fn = get_rag_function()
@@ -611,7 +618,7 @@ with st.sidebar:
     st.markdown(
         """
         <div class="promo-card">
-            <div style="font-size: 32px; margin-bottom: 6px;">🍛 🌿</div>
+            <div style="font-size: 32px; margin-bottom: 6px;"></div>
             <div style="font-size: 13px; font-weight: 700; color: #3730a3; margin-bottom: 4px;">Healthy Indian Meals Made Easy!</div>
             <div style="font-size: 11px; color: #4338ca;">Smart vegetarian meal planning with nutrition-balanced thalis.</div>
         </div>
@@ -638,7 +645,7 @@ def render_planner_card(is_expanded: bool = False):
         st.session_state.family_size = selected_family_size
     with header_right:
         st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
-        if st.button("💾 Save Plan", type="primary", use_container_width=True, key="save_plan_btn"):
+        if st.button("Save Plan", type="primary", use_container_width=True, key="save_plan_btn"):
             st.toast(f"Plan saved for {st.session_state.family_size} people!", icon="💾")
 
     # Table Header
@@ -970,9 +977,9 @@ elif nav_mode == "📅 Meal Planner":
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Meals Planned", f"{total_filled} / {total_slots}")
-    m2.metric("🌱 Vegan Meals", vegan_count)
-    m3.metric("🧀 Paneer Dishes", paneer_count)
-    m4.metric("🍲 Dal Servings", dal_count)
+    m2.metric("Vegan Meals", vegan_count)
+    m3.metric("Paneer Dishes", paneer_count)
+    m4.metric("Dal Servings", dal_count)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1019,13 +1026,13 @@ elif nav_mode == "ℹ️ About":
     )
 
     tab_persona, tab_recipes, tab_arch, tab_milestones = st.tabs([
-        "👨‍👩‍👧‍👦 User Persona", "📖 20 Recipes Catalogue", "🏗️ Technical Architecture", "🚀 Milestones (Days 1–12)"
+        "User Persona", "20 Recipes Catalogue", "Technical Architecture", "Milestones (Days 1–12)"
     ])
 
     with tab_persona:
         st.markdown(
             """
-            ### 👨‍👩‍👧‍👦 Target Persona: The Kopargaon Family
+            ###  Target Persona: The Kopargaon Family
             - **Who**: A working couple in **Kopargaon** with two kids.
             - **Routine**: Cook healthy, home-made vegetarian food every day.
             - **Goal**: Plan their week's dal-sabzi-rice menu on Sunday and buy all groceries in one trip.
@@ -1041,7 +1048,7 @@ elif nav_mode == "ℹ️ About":
         )
 
     with tab_recipes:
-        st.markdown("### 🍛 20 Authentic Indian Recipes in Database")
+        st.markdown("### 20 Authentic Indian Recipes in Database")
         st.caption("Extracted and normalized from open Wikibooks (Category:Indian recipes & Cookbook:Dal).")
 
         filter_type = st.selectbox("Filter by Category:", ["All"] + sorted(list(set(r.get("region_or_type", "Other") for r in records))))
@@ -1063,7 +1070,7 @@ elif nav_mode == "ℹ️ About":
     with tab_arch:
         st.markdown(
             """
-            ### 🏗️ Technical Architecture & Pipeline
+            ###Technical Architecture & Pipeline
             
             1. **Data Ingestion (`app/fetch.py`, `app/ingest.py`)**:
                - Fetches Wikibooks HTML/wikitext via MediaWiki API.
@@ -1085,7 +1092,7 @@ elif nav_mode == "ℹ️ About":
     with tab_milestones:
         st.markdown(
             """
-            ### 🚀 Milestones (Days 1–12)
+            ###  Milestones (Days 1–12)
             - ✅ **Day 1**: MediaWiki API recipe scraper & intro scripts.
             - ✅ **Day 2**: Recipe data models, parsing, and CLI.
             - ✅ **Day 3**: Data pipeline & normalized 20 recipes in `data/records.json`.
