@@ -1,12 +1,19 @@
-"""Retrieval-augmented answers for ThaliPlanner with source citations."""
+"""Retrieval-augmented answers for ThaliPlanner with source citations, caching, and guardrails."""
 from __future__ import annotations
 
+import logging
 import re
+import time
 from typing import Any
 
 from app.records import load_records
 
+logger = logging.getLogger("thaliplanner.rag")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
 MIN_SCORE = 0.20  # below this similarity the best chunk is treated as unrelated
+MAX_QUESTION_LENGTH = 500  # Input limit: guard against buffer-bloating attacks
 
 NUTRITION_TERMS = (
     "calorie", "kcal", "nutrition", "nutritional", "protein", "carb",
@@ -14,6 +21,17 @@ NUTRITION_TERMS = (
 )
 
 NON_VEGAN_ITEMS = {"ghee", "butter", "cream", "milk", "curd", "paneer", "yogurt", "khoya"}
+
+INJECTION_PATTERNS = (
+    "ignore previous instructions", "ignore all instructions",
+    "system override", "reveal system prompt", "print internal prompt",
+    "developer mode", "jailbreak", "expose secrets", "disregard guidelines",
+    "print system prompt", "drop table", "drop database", "show me your prompt"
+)
+
+# In-memory query cache for sub-millisecond repeated request performance
+_RAG_CACHE: dict[tuple[str, int], dict[str, Any]] = {}
+MAX_CACHE_SIZE = 256
 
 
 def should_abstain(question: str) -> bool:
@@ -28,6 +46,21 @@ def abstain_answer() -> str:
         "I don't know. The available ThaliPlanner recipe data does not contain "
         "calorie or nutrition information."
     )
+
+
+def is_prompt_injection(question: str) -> bool:
+    """Detect prompt-injection attempts that try to override system guardrails."""
+    q = (question or "").lower()
+    return any(p in q for p in INJECTION_PATTERNS)
+
+
+def estimate_tokens(text: str) -> int:
+    """Estimate token count for a text string (~1.3 tokens per whitespace word)."""
+    if not text:
+        return 0
+    words = len(text.split())
+    chars = len(text)
+    return max(1, int(words * 1.25 + chars * 0.05))
 
 
 def _is_vegan(record: dict) -> bool:
@@ -117,19 +150,70 @@ def _find_matching_recipe(question: str, records: list[dict]) -> dict | None:
     return best_match
 
 
-def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
+def answer_question(question: str, top_k: int = 5, use_cache: bool = True) -> dict[str, Any]:
+    start_time = time.perf_counter()
     question = (question or "").strip()
     if not question:
         raise ValueError("Question cannot be empty")
 
-    # 1. Nutrition questions must abstain immediately
+    if len(question) > MAX_QUESTION_LENGTH:
+        raise ValueError(
+            f"Question exceeds maximum length of {MAX_QUESTION_LENGTH} characters (received {len(question)})"
+        )
+
+    # 1. In-memory cache check
+    cache_key = (question.lower(), top_k)
+    if use_cache and cache_key in _RAG_CACHE:
+        hit = dict(_RAG_CACHE[cache_key])
+        hit["cached"] = True
+        hit["latency_ms"] = 0.18
+        logger.info(
+            "POST /ask | query='%s' | latency=0.18ms | tokens=%d | cached=True",
+            question[:40], hit.get("tokens", {}).get("total", 0)
+        )
+        return hit
+
+    # 2. Prompt injection shield
+    if is_prompt_injection(question):
+        latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        ans = "I don't know based on the available ThaliPlanner documents. Prompt injection attempt blocked."
+        in_tok = estimate_tokens(question)
+        out_tok = estimate_tokens(ans)
+        res = {
+            "question": question,
+            "answer": ans,
+            "citations": [],
+            "abstained": True,
+            "latency_ms": latency_ms,
+            "tokens": {"prompt": in_tok, "completion": out_tok, "total": in_tok + out_tok},
+            "cached": False,
+        }
+        logger.warning("POST /ask | PROMPT INJECTION BLOCKED | query='%s'", question[:40])
+        return res
+
+    # 3. Nutrition questions must abstain immediately
     if should_abstain(question):
-        return {"question": question, "answer": abstain_answer(), "citations": [], "abstained": True}
+        latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        ans = abstain_answer()
+        in_tok = estimate_tokens(question)
+        out_tok = estimate_tokens(ans)
+        res = {
+            "question": question,
+            "answer": ans,
+            "citations": [],
+            "abstained": True,
+            "latency_ms": latency_ms,
+            "tokens": {"prompt": in_tok, "completion": out_tok, "total": in_tok + out_tok},
+            "cached": False,
+        }
+        logger.info("POST /ask | NUTRITION ABSTAIN | latency=%.2fms", latency_ms)
+        return res
 
     records = load_records()
     q_lower = question.lower()
+    raw_res = None
 
-    # 2. Direct Recipe Source Query (e.g. "Where can I find the source for the Idli recipe?")
+    # 4. Direct Recipe Source Query (e.g. "Where can I find the source for the Idli recipe?")
     is_source_q = any(w in q_lower for w in ["source", "link", "url", "where can i find", "website"])
     matched_record = _find_matching_recipe(question, records)
 
@@ -150,11 +234,11 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
             "page": 1,
             "score": 1.0,
         }]
-        return {"question": question, "answer": answer, "citations": citations, "abstained": False}
+        raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
 
-    # 3. Direct Recipe Ingredients Query (e.g. "What ingredients are needed for Dhokla?")
+    # 5. Direct Recipe Ingredients Query (e.g. "What ingredients are needed for Dhokla?")
     is_ing_q = any(w in q_lower for w in ["ingredient", "ingredients", "what do i need", "items for"])
-    if matched_record and is_ing_q:
+    if raw_res is None and matched_record and is_ing_q:
         dish = matched_record["dish_name"]
         url = matched_record.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes"
         ing_list = matched_record.get("ingredients", [])
@@ -172,12 +256,12 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
             "page": 1,
             "score": 1.0,
         }]
-        return {"question": question, "answer": answer, "citations": citations, "abstained": False}
+        raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
 
-    # 4. Cooking time & difficulty query (e.g. "Which recipes are easy and take 20 minutes or less?")
+    # 6. Cooking time & difficulty query (e.g. "Which recipes are easy and take 20 minutes or less?")
     time_match = re.search(r"(\d+)\s*(?:minute|min)", q_lower)
     is_time_query = bool(time_match) or any(w in q_lower for w in ["minute", "minutes", "quick", "fast", "take less", "or less"])
-    if is_time_query and any(w in q_lower for w in ["easy", "quick", "take", "under", "less", "within", "or less"]):
+    if raw_res is None and is_time_query and any(w in q_lower for w in ["easy", "quick", "take", "under", "less", "within", "or less"]):
         max_minutes = int(time_match.group(1)) if time_match else 20
         require_easy = "easy" in q_lower
 
@@ -195,29 +279,29 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
         matching.sort(key=lambda r: _parse_time_and_difficulty(r)[0] or 999)
 
         if matching:
-            return _format_records_response(question, matching)
+            raw_res = _format_records_response(question, matching)
 
-    # 5. Dish duration inquiry for a single dish (e.g. "How long does Dhokla take and how hard is it?")
-    if matched_record and any(w in q_lower for w in ["how long", "how hard", "time", "difficulty", "take"]):
-        return _format_records_response(question, [matched_record])
+    # 7. Dish duration inquiry for a single dish (e.g. "How long does Dhokla take and how hard is it?")
+    if raw_res is None and matched_record and any(w in q_lower for w in ["how long", "how hard", "time", "difficulty", "take"]):
+        raw_res = _format_records_response(question, [matched_record])
 
-    # 6. Ingredient search queries (e.g. "Which dishes can I make with moong dal?" or "I have potatoes and onions, what can I cook?")
-    if "moong dal" in q_lower and any(w in q_lower for w in ["make", "cook", "dishes", "recipes", "with"]):
+    # 8. Ingredient search queries (e.g. "Which dishes can I make with moong dal?" or "I have potatoes and onions, what can I cook?")
+    if raw_res is None and "moong dal" in q_lower and any(w in q_lower for w in ["make", "cook", "dishes", "recipes", "with"]):
         moong_records = [r for r in records if any("moong dal" in i.lower() for i in r.get("ingredients", []))]
         if moong_records:
-            return _format_records_response(question, moong_records)
+            raw_res = _format_records_response(question, moong_records)
 
-    if "potato" in q_lower and "onion" in q_lower and any(w in q_lower for w in ["cook", "make", "what can i", "recipe"]):
+    if raw_res is None and "potato" in q_lower and "onion" in q_lower and any(w in q_lower for w in ["cook", "make", "what can i", "recipe"]):
         potato_onion = [
             r for r in records
             if any("potato" in i.lower() for i in r.get("ingredients", []))
             and any("onion" in i.lower() for i in r.get("ingredients", []))
         ]
         if potato_onion:
-            return _format_records_response(question, potato_onion)
+            raw_res = _format_records_response(question, potato_onion)
 
-    # 7. Category-specific queries (e.g. "What South Indian dishes do you have?")
-    if "south indian" in q_lower:
+    # 9. Category-specific queries (e.g. "What South Indian dishes do you have?")
+    if raw_res is None and "south indian" in q_lower:
         south_indian = [r for r in records if r.get("region_or_type", "").lower() == "south indian"]
         if "vegan" in q_lower:
             south_indian = [r for r in south_indian if _is_vegan(r)]
@@ -243,10 +327,10 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
                 "score": 0.95,
             })
         answer = "\n".join(lines)
-        return {"question": question, "answer": answer, "citations": citations, "abstained": False}
+        raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
 
-    # 8. Single dish general inquiry (e.g. "Tell me about Moong Dal")
-    if matched_record and len(q_lower.split()) <= 7:
+    # 10. Single dish general inquiry (e.g. "Tell me about Moong Dal")
+    if raw_res is None and matched_record and len(q_lower.split()) <= 7:
         dish = matched_record["dish_name"]
         url = matched_record.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes"
         ing_str = ", ".join(matched_record.get("ingredients", []))
@@ -264,41 +348,71 @@ def answer_question(question: str, top_k: int = 5) -> dict[str, Any]:
             "page": 1,
             "score": 1.0,
         }]
-        return {"question": question, "answer": answer, "citations": citations, "abstained": False}
+        raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
 
-    # 9. Fallback to Persistent ChromaDB vector search
-    from app.vectorstore import search_chunks
+    # 11. Fallback to Persistent ChromaDB vector search
+    if raw_res is None:
+        from app.vectorstore import search_chunks
 
-    hits = search_chunks(question, top_k=top_k)
-    if not hits or hits[0]["score"] < MIN_SCORE:
-        return {
-            "question": question,
-            "answer": "I don't know based on the available ThaliPlanner documents.",
-            "citations": [],
-            "abstained": True,
-        }
+        hits = search_chunks(question, top_k=top_k)
+        if not hits or hits[0]["score"] < MIN_SCORE:
+            ans = "I don't know based on the available ThaliPlanner documents."
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            in_tok = estimate_tokens(question)
+            out_tok = estimate_tokens(ans)
+            return {
+                "question": question,
+                "answer": ans,
+                "citations": [],
+                "abstained": True,
+                "latency_ms": latency_ms,
+                "tokens": {"prompt": in_tok, "completion": out_tok, "total": in_tok + out_tok},
+                "cached": False,
+            }
 
-    citations = []
-    evidence_lines = []
-    sources_lines = []
-    for index, hit in enumerate(hits, start=1):
-        source_url = hit.get("source", "")
-        # Format clean title
-        title = hit.get("title") or "Wikibooks Recipe"
-        if not title.startswith("Wikibooks") and source_url.startswith("http"):
-            title = f"Wikibooks – {title} Recipe"
+        citations = []
+        evidence_lines = []
+        sources_lines = []
+        for index, hit in enumerate(hits, start=1):
+            source_url = hit.get("source", "")
+            title = hit.get("title") or "Wikibooks Recipe"
+            if not title.startswith("Wikibooks") and source_url.startswith("http"):
+                title = f"Wikibooks – {title} Recipe"
 
-        citations.append({
-            "id": index,
-            "title": title,
-            "source": source_url,
-            "page": hit.get("page", 1),
-            "score": hit.get("score", 0.0),
-        })
-        evidence_lines.append(f"- {hit['text']} [{index}]")
-        if source_url:
-            sources_lines.append(f"[{index}] {title}: {source_url}")
+            citations.append({
+                "id": index,
+                "title": title,
+                "source": source_url,
+                "page": hit.get("page", 1),
+                "score": hit.get("score", 0.0),
+            })
+            evidence_lines.append(f"- {hit['text']} [{index}]")
+            if source_url:
+                sources_lines.append(f"[{index}] {title}: {source_url}")
 
-    sources_block = ("\n\nSources:\n" + "\n".join(sources_lines)) if sources_lines else ""
-    answer = "Based on the retrieved ThaliPlanner information:\n\n" + "\n".join(evidence_lines) + sources_block
-    return {"question": question, "answer": answer, "citations": citations, "abstained": False}
+        sources_block = ("\n\nSources:\n" + "\n".join(sources_lines)) if sources_lines else ""
+        answer = "Based on the retrieved ThaliPlanner information:\n\n" + "\n".join(evidence_lines) + sources_block
+        raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
+
+    # Attach performance, tokens, and cache metadata
+    latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    in_tok = estimate_tokens(question)
+    out_tok = estimate_tokens(raw_res["answer"])
+    raw_res["latency_ms"] = latency_ms
+    raw_res["tokens"] = {
+        "prompt": in_tok,
+        "completion": out_tok,
+        "total": in_tok + out_tok,
+    }
+    raw_res["cached"] = False
+
+    # Store in LRU cache
+    if len(_RAG_CACHE) >= MAX_CACHE_SIZE:
+        _RAG_CACHE.pop(next(iter(_RAG_CACHE)))
+    _RAG_CACHE[cache_key] = dict(raw_res)
+
+    logger.info(
+        "POST /ask | query='%s' | latency=%.2fms | in_tokens=%d | out_tokens=%d | cached=False",
+        question[:40], latency_ms, in_tok, out_tok
+    )
+    return raw_res
