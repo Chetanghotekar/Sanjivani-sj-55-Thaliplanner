@@ -13,6 +13,8 @@ exclude = [
     "ThaliplanerDailyUp",
     "ThaliplanerDailyUpDay08-Day09",
     "ThaliplanerDailyUpDay10",
+    "ThaliplanerDailyUpDay11",
+    "ThaliplanerDailyUpDay12", 
 ]
 
 [tool.ruff.lint]
