@@ -243,10 +243,17 @@ st.markdown(
     
     html, body, [class*="css"] {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #111827 !important;
     }
     
     .stApp {
         background-color: #f4f5fc;
+        color: #111827 !important;
+    }
+
+    /* Universal black text for content on light/white backgrounds */
+    p, span, label, div, strong, b, li, h1, h2, h3, h4, h5, h6 {
+        color: #111827;
     }
     
     header[data-testid="stHeader"] {
@@ -282,14 +289,14 @@ st.markdown(
     .brand-title {
         font-size: 20px;
         font-weight: 700;
-        color: #1e1b4b;
+        color: #1e1b4b !important;
         line-height: 1.1;
     }
     
     .brand-sub {
         font-size: 11px;
         font-weight: 500;
-        color: #6b7280;
+        color: #4b5563 !important;
         letter-spacing: 0.5px;
     }
     
@@ -299,7 +306,7 @@ st.markdown(
     }
     
     div[data-testid="stRadio"] label {
-        background-color: #ffffff;
+        background-color: #ffffff !important;
         border: 1px solid #e2e8f0;
         border-radius: 10px;
         padding: 8px 14px !important;
@@ -308,8 +315,14 @@ st.markdown(
         cursor: pointer;
     }
     
+    div[data-testid="stRadio"] label p,
+    div[data-testid="stRadio"] label span {
+        color: #111827 !important;
+        font-weight: 600 !important;
+    }
+    
     div[data-testid="stRadio"] label:hover {
-        background-color: #ede9fe;
+        background-color: #ede9fe !important;
         border-color: #c4b5fd;
     }
     
@@ -335,18 +348,23 @@ st.markdown(
     }
     
     .card {
-        background: #ffffff;
+        background: #ffffff !important;
         border-radius: 16px;
         padding: 20px 22px;
         box-shadow: 0 2px 10px rgba(79, 70, 229, 0.04);
         border: 1px solid #eef0f8;
         margin-bottom: 20px;
+        color: #111827 !important;
+    }
+    
+    .card * {
+        color: #111827;
     }
     
     .card-title {
         font-size: 17px;
         font-weight: 700;
-        color: #2e1065;
+        color: #2e1065 !important;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -364,8 +382,8 @@ st.markdown(
     
     .user-bubble {
         align-self: flex-end;
-        background: #ede9fe;
-        color: #1e1b4b;
+        background: #ede9fe !important;
+        color: #1e1b4b !important;
         padding: 12px 16px;
         border-radius: 18px 18px 4px 18px;
         max-width: 85%;
@@ -395,14 +413,18 @@ st.markdown(
     }
     
     .bot-bubble {
-        background: #ffffff;
+        background: #ffffff !important;
         border: 1px solid #e2e8f0;
         padding: 14px 18px;
         border-radius: 4px 18px 18px 18px;
-        color: #1f2937;
+        color: #111827 !important;
         font-size: 13.5px;
         line-height: 1.5;
         box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    
+    .bot-bubble * {
+        color: #111827 !important;
     }
     
     .citation-box {
@@ -413,18 +435,22 @@ st.markdown(
         padding-top: 8px;
         border-top: 1px solid #f1f5f9;
         font-size: 11px;
-        color: #6b7280;
+        color: #6b7280 !important;
+    }
+    
+    .citation-box span, .citation-box span * {
+        color: #6b7280 !important;
     }
     
     .citation-tag {
-        color: #5d50c6;
+        color: #5d50c6 !important;
         font-weight: 600;
-        text-decoration: none;
+        text-decoration: underline;
     }
 
     .warning-banner {
-        background: #fff8e6;
-        color: #b45309;
+        background: #fff8e6 !important;
+        color: #92400e !important;
         border: 1px solid #fde68a;
         padding: 10px 16px;
         border-radius: 10px;
@@ -435,16 +461,24 @@ st.markdown(
         gap: 8px;
         margin-top: 12px;
     }
+    
+    .warning-banner * {
+        color: #92400e !important;
+    }
 
     .success-banner {
-        background: #ecfdf5;
-        color: #047857;
+        background: #ecfdf5 !important;
+        color: #065f46 !important;
         border: 1px solid #a7f3d0;
         padding: 8px 14px;
         border-radius: 10px;
         font-size: 12.5px;
         font-weight: 600;
         margin-top: 10px;
+    }
+    
+    .success-banner * {
+        color: #065f46 !important;
     }
     
     .chip {
@@ -455,21 +489,62 @@ st.markdown(
         font-weight: 600;
         margin-right: 4px;
     }
-    .chip-vegan { background: #dcfce7; color: #166534; }
-    .chip-veg { background: #ecfdf5; color: #047857; }
-    .chip-paneer { background: #ffedd5; color: #9a3412; }
+    .chip-vegan { background: #dcfce7 !important; color: #166534 !important; }
+    .chip-veg { background: #ecfdf5 !important; color: #047857 !important; }
+    .chip-paneer { background: #ffedd5 !important; color: #9a3412 !important; }
 
     .total-pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: #e0f2fe;
-        color: #0369a1;
+        background: #e0f2fe !important;
+        color: #0369a1 !important;
         padding: 6px 14px;
         border-radius: 20px;
         font-size: 13px;
         font-weight: 700;
         margin-top: 12px;
+    }
+    
+    .total-pill * {
+        color: #0369a1 !important;
+    }
+
+    /* Force black text inside form widgets & dropdowns */
+    div[data-baseweb="select"] *,
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] div,
+    div[data-baseweb="popover"] *,
+    div[data-baseweb="menu"] *,
+    ul[role="listbox"] *,
+    ul[role="listbox"] li,
+    input,
+    .stTextInput input {
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827 !important;
+    }
+
+    /* Metric values & labels */
+    div[data-testid="stMetricValue"] *,
+    div[data-testid="stMetricLabel"] * {
+        color: #111827 !important;
+    }
+
+    /* Checkbox labels */
+    div[data-testid="stCheckbox"] label span {
+        color: #111827 !important;
+    }
+
+    /* Tabs & Expanders */
+    button[data-baseweb="tab"] div {
+        color: #111827 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] div {
+        color: #5d50c6 !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="stExpander"] * {
+        color: #111827 !important;
     }
     </style>
     """,
