@@ -41,6 +41,7 @@ Sending a GET request to `https://sanjivani-thaliplanner-api.onrender.com/health
 | **Day 10** | Unified Streamlit Dashboard UI | ✅ Completed | `ui/app.py` (Chat, 7-Day Grid, Grocery list, Dietary chips) |
 | **Day 11** | Test Suite (10 Pytest) & Dockerization | ✅ Completed | `tests/test_day11.py`, `Dockerfile`, `docker-compose.yml` |
 | **Day 12** | GitHub Actions CI & Cloud Deployment | ✅ Completed | `.github/workflows/ci.yml`, `render.yaml`, Live URL & `/health` |
+| **Day 13** | Latency/Token Logging, Cache, Injection Defense, Mermaid Architecture & Resume | ✅ Completed | `app/rag.py`, `README.md`, `docs/resume.md`, 13 Pytest tests |
 
 ---
 
