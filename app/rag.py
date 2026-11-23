@@ -128,6 +128,76 @@ def _format_records_response(question: str, selected_records: list[dict]) -> dic
     }
 
 
+def _format_single_recipe_response(record: dict, question: str = "") -> dict[str, Any]:
+    """Build complete structured Indian recipe response with timings, ingredients, method, and source."""
+    dish = record.get("dish_name", "Recipe")
+    region = record.get("region_or_type") or "Indian"
+    servings = record.get("servings")
+    servings_str = str(servings) if servings is not None else "Not specified in the recipe source."
+    prep_time = record.get("preparation_time") or "Not specified in the recipe source."
+    cook_time = record.get("cooking_time") or "Not specified in the recipe source."
+    ferm_time = record.get("fermentation_time")
+    soak_time = record.get("soaking_time")
+    difficulty = record.get("difficulty") or "Not specified in the recipe source."
+
+    # Build the metadata timing line
+    meta_parts = [
+        f"Servings: {servings_str}",
+        f"Preparation Time: {prep_time}",
+        f"Cooking Time: {cook_time}",
+    ]
+    if soak_time and soak_time != "Not specified in the recipe source.":
+        meta_parts.append(f"Soaking Time: {soak_time}")
+    if ferm_time and ferm_time != "Not specified in the recipe source.":
+        meta_parts.append(f"Fermentation Time: {ferm_time}")
+    elif "ferment" in (record.get("time_and_difficulty") or "").lower():
+        meta_parts.append(f"Fermentation Time: {ferm_time or 'Not specified in the recipe source.'}")
+
+    meta_parts.append(f"Difficulty: {difficulty}")
+    meta_line = " | ".join(meta_parts)
+
+    # Ingredients list
+    raw_ingredients = record.get("ingredients") or []
+    if isinstance(raw_ingredients, list) and raw_ingredients:
+        ing_lines = "\n".join(str(i) for i in raw_ingredients)
+    else:
+        ing_lines = "Not specified in the recipe source."
+
+    # Method steps
+    raw_steps = record.get("preparation_steps") or []
+    if isinstance(raw_steps, list) and raw_steps:
+        step_lines = "\n".join(str(s) for s in raw_steps)
+    else:
+        step_lines = "Not specified in the recipe source."
+
+    url = record.get("source_url") or f"https://en.wikibooks.org/wiki/Cookbook:{dish.replace(' ', '_')}"
+
+    answer = (
+        f"{dish} ({region})\n"
+        f"{meta_line}\n"
+        f"Ingredients:\n"
+        f"{ing_lines}\n"
+        f"Method:\n"
+        f"{step_lines}\n"
+        f"Source: [Wikibooks – {dish} Recipe]({url})"
+    )
+
+    citations = [{
+        "id": 1,
+        "title": f"Wikibooks – {dish} Recipe",
+        "source": url,
+        "page": 1,
+        "score": 1.0,
+    }]
+
+    return {
+        "question": question,
+        "answer": answer,
+        "citations": citations,
+        "abstained": False,
+    }
+
+
 def _find_matching_recipe(question: str, records: list[dict]) -> dict | None:
     """Match a recipe name mentioned specifically in the query."""
     q_norm = re.sub(r"[^\w\s]", " ", question.lower())
@@ -257,6 +327,11 @@ def answer_question(question: str, top_k: int = 5, use_cache: bool = True) -> di
             "score": 1.0,
         }]
         raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
+
+    # 5b. Complete Structured Recipe Response (e.g. "Give me the recipe for Idli", "How do I make Dhokla?")
+    is_recipe_q = any(w in q_lower for w in ["recipe", "make", "cook", "prepare", "how to", "how do i", "instructions", "method", "steps", "give me"])
+    if raw_res is None and matched_record and (is_recipe_q or len(q_lower.split()) <= 2) and not is_source_q and not is_ing_q:
+        raw_res = _format_single_recipe_response(matched_record, question)
 
     # 6. Cooking time & difficulty query (e.g. "Which recipes are easy and take 20 minutes or less?")
     time_match = re.search(r"(\d+)\s*(?:minute|min)", q_lower)
