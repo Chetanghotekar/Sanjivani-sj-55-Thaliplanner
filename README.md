@@ -1,6 +1,8 @@
 # ThaliPlanner
 
 ThaliPlanner is a beginner-friendly Indian recipe data and search project.
+[![CI](https://github.com/Chetanghotekar/Sanjivani-sj-55-Thaliplanner/blob/main/ThaliplanerDailyUpDay12/.github/workflows/ci.yml/badge.svg)](https://github.com/Chetanghotekar/Sanjivani-sj-55-Thaliplanner/blob/main/ThaliplanerDailyUpDay12/.github/workflows/ci.yml)
+
 
 ## Project structure
 - `day01_intro.py`, `day01_menu.py`: Day 1 introduction and menu
