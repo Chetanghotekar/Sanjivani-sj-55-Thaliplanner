@@ -40,7 +40,7 @@ st.set_page_config(
 
 # ── Paths & Constants ───────────────────────────────────────────────────────
 FEEDBACK_FILE = WORKSPACE / "ui" / "feedback.jsonl"
-API_BASE = "http://localhost:8000"
+API_BASE = "https://sanjivani-sj-55-thaliplanner-3.onrender.com/"
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 MEALS = ["Breakfast", "Lunch", "Dinner"]
