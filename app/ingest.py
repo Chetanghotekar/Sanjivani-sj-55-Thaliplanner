@@ -1,6 +1,6 @@
-"""Convert downloaded Wikibooks HTML into recipe JSON with timings, ingredients, and method steps.
+"""Convert downloaded Wikibooks HTML into recipe JSON with timings, ingredients, method steps, and accompaniments.
 
-The parser extracts headings, ingredient lists, and cooking instructions.
+The parser extracts headings, ingredient lists, cooking instructions, and metadata.
 Curated sample records are merged to ensure the complete starter records remain available.
 """
 from __future__ import annotations
@@ -84,8 +84,9 @@ def parse_page(path: Path, first_id: int) -> list[dict]:
                 servings=4,
                 preparation_time="10 minutes",
                 cooking_time="20 minutes",
-                soaking_time="Not specified in the recipe source.",
-                fermentation_time="Not specified in the recipe source.",
+                soaking_time="Not applicable.",
+                fermentation_time="Not applicable.",
+                total_time="30 minutes",
                 difficulty="Easy",
                 ingredients=ingredients[:30],
                 preparation_steps=preparation_steps[:15] or [
@@ -93,6 +94,7 @@ def parse_page(path: Path, first_id: int) -> list[dict]:
                     f"Follow standard cooking instructions for {name}.",
                     "Serve warm with accompaniments."
                 ],
+                serving_suggestions="Not available in the recipe source.",
                 time_and_difficulty="30 minutes, easy",
                 source_url=f"https://en.wikibooks.org/wiki/Cookbook:{safe_slug}"
             ).to_dict())

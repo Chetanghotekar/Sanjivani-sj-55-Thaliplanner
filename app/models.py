@@ -1,4 +1,4 @@
-"""Recipe record schema for ThaliPlanner with complete timings, ingredients, and method steps."""
+"""Recipe record schema for ThaliPlanner with complete timings, ingredients, method steps, and accompaniments."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -15,9 +15,11 @@ class Record:
     cooking_time: Optional[str] = None
     soaking_time: Optional[str] = None
     fermentation_time: Optional[str] = None
+    total_time: Optional[str] = None
     difficulty: Optional[str] = None
     ingredients: List[str] = field(default_factory=list)
     preparation_steps: List[str] = field(default_factory=list)
+    serving_suggestions: Optional[str] = None
     time_and_difficulty: str = ""
     source_url: str = ""
 

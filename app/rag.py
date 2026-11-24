@@ -94,17 +94,79 @@ def _format_recipe_chunk(record: dict) -> str:
     )
 
 
+def format_standard_recipe(record: dict) -> str:
+    """Format any recipe record into the consistent, professional standard detailed format."""
+    dish = record.get("dish_name", "Recipe")
+    category = record.get("region_or_type") or "Not available in the recipe source."
+    servings = record.get("servings")
+    servings_str = str(servings) if servings is not None else "Not available in the recipe source."
+    prep_time = record.get("preparation_time") or "Not available in the recipe source."
+    cook_time = record.get("cooking_time") or "Not available in the recipe source."
+    soak_time = record.get("soaking_time") or "Not applicable."
+    ferm_time = record.get("fermentation_time") or "Not applicable."
+    total_time = record.get("total_time") or "Not available in the recipe source."
+    difficulty = record.get("difficulty") or "Not available in the recipe source."
+
+    # Ingredients list
+    raw_ingredients = record.get("ingredients") or []
+    if isinstance(raw_ingredients, list) and raw_ingredients:
+        ing_items = []
+        for item in raw_ingredients:
+            s = str(item).strip()
+            if not s.startswith("- "):
+                ing_items.append(f"- {s}")
+            else:
+                ing_items.append(s)
+        ing_block = "\n".join(ing_items)
+    else:
+        ing_block = "- Not available in the recipe source."
+
+    # Preparation Method (Numbered 1., 2., 3., etc.)
+    raw_steps = record.get("preparation_steps") or []
+    if isinstance(raw_steps, list) and raw_steps:
+        step_items = []
+        for idx, step in enumerate(raw_steps, start=1):
+            s = str(step).strip()
+            s_clean = re.sub(r"^\d+\.\s*", "", s)
+            step_items.append(f"{idx}. {s_clean}")
+        step_block = "\n".join(step_items)
+    else:
+        step_block = "1. Not available in the recipe source."
+
+    serving_suggestions = record.get("serving_suggestions") or "Not available in the recipe source."
+    source_url = record.get("source_url") or f"https://en.wikibooks.org/wiki/Cookbook:{dish.replace(' ', '_')}"
+
+    return (
+        f"# {dish}\n"
+        f"**Category/Region:** {category}\n"
+        f"**Servings:** {servings_str}\n"
+        f"**Preparation Time:** {prep_time}\n"
+        f"**Cooking Time:** {cook_time}\n"
+        f"**Soaking Time:** {soak_time}\n"
+        f"**Fermentation Time:** {ferm_time}\n"
+        f"**Total Time:** {total_time}\n"
+        f"**Difficulty:** {difficulty}\n\n"
+        f"### Ingredients\n"
+        f"{ing_block}\n\n"
+        f"### Preparation Method\n"
+        f"{step_block}\n\n"
+        f"### Serving Suggestions\n"
+        f"{serving_suggestions}\n\n"
+        f"### Source\n"
+        f"{source_url}"
+    )
+
+
 def _format_records_response(question: str, selected_records: list[dict]) -> dict[str, Any]:
-    """Build response text with evidence lines, citation numbers, and sources."""
-    evidence_lines = []
+    """Build response with multiple matching recipes in the standard detailed format."""
+    evidence_blocks = []
     citations = []
-    sources_lines = []
 
     for index, r in enumerate(selected_records, start=1):
         dish = r["dish_name"]
-        url = r.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes"
-        chunk_text = _format_recipe_chunk(r)
-        evidence_lines.append(f"- {chunk_text} [{index}]")
+        url = r.get("source_url") or f"https://en.wikibooks.org/wiki/Cookbook:{dish.replace(' ', '_')}"
+        formatted = format_standard_recipe(r)
+        evidence_blocks.append(formatted)
         citations.append({
             "id": index,
             "title": dish,
@@ -112,14 +174,8 @@ def _format_records_response(question: str, selected_records: list[dict]) -> dic
             "page": 1,
             "score": 1.0,
         })
-        sources_lines.append(f"[{index}] {dish}: {url}")
 
-    answer = (
-        "Based on the retrieved ThaliPlanner information:\n"
-        + "\n".join(evidence_lines)
-        + "\n\nSources:\n"
-        + "\n".join(sources_lines)
-    )
+    answer = "\n\n---\n\n".join(evidence_blocks)
     return {
         "question": question,
         "answer": answer,
@@ -129,59 +185,10 @@ def _format_records_response(question: str, selected_records: list[dict]) -> dic
 
 
 def _format_single_recipe_response(record: dict, question: str = "") -> dict[str, Any]:
-    """Build complete structured Indian recipe response with timings, ingredients, method, and source."""
+    """Return standard detailed recipe response for a single dish."""
     dish = record.get("dish_name", "Recipe")
-    region = record.get("region_or_type") or "Indian"
-    servings = record.get("servings")
-    servings_str = str(servings) if servings is not None else "Not specified in the recipe source."
-    prep_time = record.get("preparation_time") or "Not specified in the recipe source."
-    cook_time = record.get("cooking_time") or "Not specified in the recipe source."
-    ferm_time = record.get("fermentation_time")
-    soak_time = record.get("soaking_time")
-    difficulty = record.get("difficulty") or "Not specified in the recipe source."
-
-    # Build the metadata timing line
-    meta_parts = [
-        f"Servings: {servings_str}",
-        f"Preparation Time: {prep_time}",
-        f"Cooking Time: {cook_time}",
-    ]
-    if soak_time and soak_time != "Not specified in the recipe source.":
-        meta_parts.append(f"Soaking Time: {soak_time}")
-    if ferm_time and ferm_time != "Not specified in the recipe source.":
-        meta_parts.append(f"Fermentation Time: {ferm_time}")
-    elif "ferment" in (record.get("time_and_difficulty") or "").lower():
-        meta_parts.append(f"Fermentation Time: {ferm_time or 'Not specified in the recipe source.'}")
-
-    meta_parts.append(f"Difficulty: {difficulty}")
-    meta_line = " | ".join(meta_parts)
-
-    # Ingredients list
-    raw_ingredients = record.get("ingredients") or []
-    if isinstance(raw_ingredients, list) and raw_ingredients:
-        ing_lines = "\n".join(str(i) for i in raw_ingredients)
-    else:
-        ing_lines = "Not specified in the recipe source."
-
-    # Method steps
-    raw_steps = record.get("preparation_steps") or []
-    if isinstance(raw_steps, list) and raw_steps:
-        step_lines = "\n".join(str(s) for s in raw_steps)
-    else:
-        step_lines = "Not specified in the recipe source."
-
     url = record.get("source_url") or f"https://en.wikibooks.org/wiki/Cookbook:{dish.replace(' ', '_')}"
-
-    answer = (
-        f"{dish} ({region})\n"
-        f"{meta_line}\n"
-        f"Ingredients:\n"
-        f"{ing_lines}\n"
-        f"Method:\n"
-        f"{step_lines}\n"
-        f"Source: [Wikibooks – {dish} Recipe]({url})"
-    )
-
+    answer = format_standard_recipe(record)
     citations = [{
         "id": 1,
         "title": f"Wikibooks – {dish} Recipe",
@@ -189,7 +196,6 @@ def _format_single_recipe_response(record: dict, question: str = "") -> dict[str
         "page": 1,
         "score": 1.0,
     }]
-
     return {
         "question": question,
         "answer": answer,
@@ -387,43 +393,11 @@ def answer_question(question: str, top_k: int = 5, use_cache: bool = True) -> di
         limit = 3 if ("3" in q_lower or "three" in q_lower) else len(south_indian)
         selected = south_indian[:limit]
 
-        lines = ["Here are the South Indian recipes available in ThaliPlanner:\n"]
-        citations = []
-        for idx, r in enumerate(selected, start=1):
-            dish = r["dish_name"]
-            url = r.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes"
-            diet = "🌱 Vegan" if _is_vegan(r) else "🟢 Vegetarian"
-            lines.append(f"{idx}. **{dish}** ({diet}) — [Wikibooks Recipe]({url})")
-            citations.append({
-                "id": idx,
-                "title": f"Wikibooks – {dish} Recipe",
-                "source": url,
-                "page": 1,
-                "score": 0.95,
-            })
-        answer = "\n".join(lines)
-        raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
+        raw_res = _format_records_response(question, selected)
 
-    # 10. Single dish general inquiry (e.g. "Tell me about Moong Dal")
+    # 10. Single dish general inquiry (e.g. "Tell me about Moong Dal" or dish name query)
     if raw_res is None and matched_record and len(q_lower.split()) <= 7:
-        dish = matched_record["dish_name"]
-        url = matched_record.get("source_url") or "https://en.wikibooks.org/wiki/Category:Indian_recipes"
-        ing_str = ", ".join(matched_record.get("ingredients", []))
-        answer = (
-            f"**{dish}** is a traditional {matched_record.get('region_or_type', 'Indian')} dish.\n\n"
-            f"- **Servings:** {matched_record.get('servings', 4)}\n"
-            f"- **Time & Difficulty:** {matched_record.get('time_and_difficulty', 'Standard')}\n"
-            f"- **Key Ingredients:** {ing_str}\n\n"
-            f"Source: [Wikibooks – {dish} Recipe]({url})"
-        )
-        citations = [{
-            "id": 1,
-            "title": f"Wikibooks – {dish} Recipe",
-            "source": url,
-            "page": 1,
-            "score": 1.0,
-        }]
-        raw_res = {"question": question, "answer": answer, "citations": citations, "abstained": False}
+        raw_res = _format_single_recipe_response(matched_record, question)
 
     # 11. Fallback to Persistent ChromaDB vector search
     if raw_res is None:

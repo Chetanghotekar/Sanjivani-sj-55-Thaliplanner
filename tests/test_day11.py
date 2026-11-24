@@ -163,39 +163,53 @@ def test_structured_recipe_responses():
     # Idli test matching the exact expected output format
     res_idli = answer_question("Give me the recipe for Idli")
     ans_idli = res_idli["answer"]
-    assert "Idli (South Indian)" in ans_idli
-    assert "Servings: 4" in ans_idli
-    assert "Preparation Time: 10 minutes" in ans_idli
-    assert "Cooking Time: 12 minutes" in ans_idli
-    assert "Fermentation Time: 8 hours" in ans_idli
-    assert "Difficulty: Medium" in ans_idli
-    assert "2 cups idli rice" in ans_idli
-    assert "1 cup urad dal" in ans_idli
-    assert "Wash and soak rice and urad dal separately." in ans_idli
+    assert "# Idli" in ans_idli
+    assert "**Category/Region:** South Indian" in ans_idli
+    assert "**Servings:** 4" in ans_idli
+    assert "**Preparation Time:** 10 minutes" in ans_idli
+    assert "**Cooking Time:** 12 minutes" in ans_idli
+    assert "**Fermentation Time:** 8 hours" in ans_idli
+    assert "**Difficulty:** Medium" in ans_idli
+    assert "### Ingredients" in ans_idli
+    assert "Idli rice (parboiled rice) – 2 cups" in ans_idli
+    assert "Whole skinless urad dal – 1 cup" in ans_idli
+    assert "### Preparation Method" in ans_idli
+    assert "Wash and soak idli rice and urad dal with fenugreek seeds" in ans_idli
+    assert "### Serving Suggestions" in ans_idli
+    assert "### Source" in ans_idli
     assert "https://en.wikibooks.org/wiki/Cookbook:Idli" in ans_idli
 
     # Dhokla test
     res_dhokla = answer_question("Give me the recipe for Dhokla")
     ans_dhokla = res_dhokla["answer"]
-    assert "Dhokla (Gujarati)" in ans_dhokla
-    assert "Ingredients:" in ans_dhokla
-    assert "Method:" in ans_dhokla
+    assert "# Dhokla" in ans_dhokla
+    assert "**Category/Region:** Gujarati / Indian" in ans_dhokla
+    assert "### Ingredients" in ans_dhokla
+    assert "Gram flour (besan) – 1 cup" in ans_dhokla
+    assert "### Preparation Method" in ans_dhokla
+    assert "### Serving Suggestions" in ans_dhokla
     assert "https://en.wikibooks.org/wiki/Cookbook:Dhokla" in ans_dhokla
 
     # Moong Dal test
     res_moong = answer_question("Give me the recipe for Moong Dal")
     ans_moong = res_moong["answer"]
-    assert "Moong Dal (Dal)" in ans_moong
-    assert "Ingredients:" in ans_moong
-    assert "Method:" in ans_moong
+    assert "# Moong Dal" in ans_moong
+    assert "**Category/Region:** Dal / Indian" in ans_moong
+    assert "### Ingredients" in ans_moong
+    assert "Yellow moong dal – 1 cup" in ans_moong
+    assert "### Preparation Method" in ans_moong
+    assert "### Serving Suggestions" in ans_moong
     assert "https://en.wikibooks.org/wiki/Cookbook:Moong_Dal" in ans_moong
 
     # Paneer Butter Masala test
     res_paneer = answer_question("Give me the recipe for Paneer Butter Masala")
     ans_paneer = res_paneer["answer"]
-    assert "Paneer Butter Masala (North Indian)" in ans_paneer
-    assert "Ingredients:" in ans_paneer
-    assert "Method:" in ans_paneer
+    assert "# Paneer Butter Masala" in ans_paneer
+    assert "**Category/Region:** North Indian" in ans_paneer
+    assert "### Ingredients" in ans_paneer
+    assert "Paneer – 200g, cut into cubes" in ans_paneer
+    assert "### Preparation Method" in ans_paneer
+    assert "### Serving Suggestions" in ans_paneer
     assert "https://en.wikibooks.org/wiki/Cookbook:Paneer_Butter_Masala" in ans_paneer
 
 
